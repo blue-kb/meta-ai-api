@@ -27,7 +27,9 @@ async function backfill() {
         for (const ep of endpoints) {
             console.log(`  Syncing ${ep} for ${date}...`);
             try {
-                const response = await fetch(`${baseUrl}${ep}?date=${date}`);
+                const response = await fetch(`${baseUrl}${ep}?date=${date}`, {
+                    headers: { 'x-api-key': 'uadKcKo072jeAjK' }
+                });
                 const data = await response.json();
                 if (response.ok) {
                     console.log(`  ✅ Success: ${JSON.stringify(data)}`);

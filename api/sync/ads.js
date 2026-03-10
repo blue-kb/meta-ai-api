@@ -1,6 +1,12 @@
 import { getSheetsClient, fetchMetaInsights, getTabName, getYesterdayDateString, appendToSheet, parseMetaAction, safeDivide } from '../utils.js';
 
 export default async function handler(req, res) {
+    // Security check
+    const apiKey = req.headers['x-api-key'];
+    if (apiKey !== process.env.AI_AGENT_API_KEY) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     try {
         const sheetsClient = await getSheetsClient();
 
