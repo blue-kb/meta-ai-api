@@ -81,13 +81,13 @@ export default async function handler(req, res) {
 
         const tabName = getTabName('Ads');
         const headers = [
-            'date', 'ad_id', 'ad_name', 'adset_id', 'adset_name', 'campaign_id', 'campaign_name',
-            'status', 'creative_type', 'spend', 'impressions', 'reach', 'clicks', 'link_clicks',
-            'ctr', 'cpm', 'cpc', 'frequency', 'purchases', 'purchase_value', 'purchase_roas',
-            'cost_per_purchase', 'subscribes', 'cost_per_subscribe', 'subscribe_value',
-            'add_to_cart', 'initiate_checkout', 'video_play_pct_25', 'video_play_pct_50',
-            'video_play_pct_75', 'video_play_pct_100', 'video_views_3s', 'video_views_thruplay',
-            'hook_rate', 'hold_rate', 'days_running'
+            'Date', 'Ad ID', 'Ad Name', 'AdSet ID', 'AdSet Name', 'Campaign ID', 'Campaign Name',
+            'Status', 'Creative Type', 'Spend', 'Impressions', 'Reach', 'Clicks', 'Link Clicks',
+            'CTR (%)', 'CPM', 'CPC', 'Frequency', 'Purchases', 'Purchase Value', 'Purchase ROAS',
+            'Cost per Purchase', 'Subscribes', 'Cost per Subscribe', 'Subscribe Value',
+            'Add to Cart', 'Initiate Checkout', 'Video Play 25%', 'Video Play 50%',
+            'Video Play 75%', 'Video Play 100%', 'Video Views 3s', 'Video Views Thruplay',
+            'Hook Rate (%)', 'Hold Rate (%)', 'Days Running'
         ];
 
         const added = await appendToSheet(sheetsClient, tabName, headers, formatRow, insights);

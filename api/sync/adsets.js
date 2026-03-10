@@ -62,12 +62,11 @@ export default async function handler(req, res) {
 
         const tabName = getTabName('AdSets');
         const headers = [
-            'date', 'adset_id', 'adset_name', 'campaign_id', 'campaign_name', 'status', 'targeting_type',
-            'optimization_goal', 'bid_strategy', 'bid_amount', 'daily_budget', 'spend', 'impressions',
-            'reach', 'clicks', 'link_clicks', 'ctr', 'cpm', 'cpc', 'frequency', 'purchases', 'purchase_value',
-            'purchase_roas', 'cost_per_purchase', 'subscribes', 'cost_per_subscribe', 'subscribe_value',
-            'add_to_cart', 'initiate_checkout', 'conversions_7d', 'learning_phase_status',
-            'audience_size_min', 'audience_size_max'
+            'Date', 'AdSet ID', 'AdSet Name', 'Campaign ID', 'Campaign Name', 'Spend', 'Impressions',
+            'Reach', 'Clicks', 'Link Clicks', 'CTR (%)', 'CPM', 'CPC', 'Frequency', 'Purchases',
+            'Purchase Value', 'Purchase ROAS', 'Cost per Purchase', 'Subscribes',
+            'Cost per Subscribe', 'Subscribe Value', 'Add to Cart', 'Initiate Checkout',
+            'Video Views 3s', 'Video Views Thruplay'
         ];
 
         const added = await appendToSheet(sheetsClient, tabName, headers, formatRow, insights);

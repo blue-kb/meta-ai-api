@@ -128,8 +128,18 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
                 }]
             }
         });
+    }
 
-        // 3. Add headers
+    // 3. Verify if headers are present (check row 1)
+    const headerCheck = await sheetsClient.spreadsheets.values.get({
+        spreadsheetId,
+        range: `${tabName}!A1:Z1`,
+    });
+
+    const hasHeaders = headerCheck.data.values && headerCheck.data.values[0] && headerCheck.data.values[0].length > 0;
+
+    if (!hasHeaders) {
+        // Add headers if missing
         await sheetsClient.spreadsheets.values.update({
             spreadsheetId,
             range: `${tabName}!A1`,
