@@ -136,10 +136,11 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
         range: `${tabName}!A1:Z1`,
     });
 
-    const hasHeaders = headerCheck.data.values && headerCheck.data.values[0] && headerCheck.data.values[0].length > 0;
+    const firstCell = headerCheck.data.values && headerCheck.data.values[0] && headerCheck.data.values[0][0];
+    const isLegacyHeader = firstCell === 'date';
 
-    if (!hasHeaders) {
-        // Add headers if missing
+    if (!hasHeaders || isLegacyHeader) {
+        // Add or upgrade headers
         await sheetsClient.spreadsheets.values.update({
             spreadsheetId,
             range: `${tabName}!A1`,
