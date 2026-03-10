@@ -212,7 +212,15 @@ export async function wipeAndResetHeaders(sheetsClient, tabName, headers) {
  * Parse standard fields from meta row
  */
 export function parseMetaAction(actions, actionType) {
-    if (!actions) return 0;
+    if (!actions || !Array.isArray(actions)) return 0;
     const action = actions.find(a => a.action_type === actionType);
     return action ? parseFloat(action.value) : 0;
+}
+
+/**
+ * Ensure a value is safe for Google Sheets (no undefined/null)
+ */
+export function safeValue(val, fallback = 0) {
+    if (val === undefined || val === null || val === '') return fallback;
+    return val;
 }

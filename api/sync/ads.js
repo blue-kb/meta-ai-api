@@ -21,6 +21,8 @@ export default async function handler(req, res) {
             time_range: JSON.stringify({ 'since': targetDate, 'until': targetDate })
         });
 
+        console.log(`[Ads Sync] Fetched ${insights.length} ads for ${targetDate}`);
+
         const formatRow = (data) => {
             const spend = parseFloat(data.spend) || 0;
             const impressions = parseInt(data.impressions) || 0;
@@ -45,42 +47,42 @@ export default async function handler(req, res) {
             const holdRate = safeDivide(videoViewsThruplay, videoViews3s) * 100;
 
             return [
-                targetDate, // A: date
-                data.ad_id, // B: ad_id
-                data.ad_name, // C: ad_name
-                data.adset_id, // D: adset_id
-                data.adset_name, // E: adset_name
-                data.campaign_id, // F: campaign_id
-                data.campaign_name, // G: campaign_name
-                '', // H: status
-                '', // I: creative_type
+                targetDate, // A: date (YYYY-MM-DD)
+                safeValue(data.ad_id, ''), // B: ad_id
+                safeValue(data.ad_name, ''), // C: ad_name
+                safeValue(data.adset_id, ''), // D: adset_id
+                safeValue(data.adset_name, ''), // E: adset_name
+                safeValue(data.campaign_id, ''), // F: campaign_id
+                safeValue(data.campaign_name, ''), // G: campaign_name
+                '', // H: Status (N/A in insights)
+                '', // I: Creative Type (N/A in insights)
                 spend, // J: spend
                 impressions, // K: impressions
-                data.reach || 0, // L: reach
-                data.clicks || 0, // M: clicks
-                data.inline_link_clicks || 0, // N: link_clicks
-                data.inline_link_click_ctr || 0, // O: ctr
-                data.cpm || 0, // P: cpm
-                data.cpc || safeDivide(spend, data.inline_link_clicks), // Q: cpc
-                data.frequency || 0, // R: frequency
+                safeValue(data.reach), // L: reach
+                safeValue(data.clicks), // M: clicks
+                safeValue(data.inline_link_clicks), // N: link_clicks
+                safeValue(data.inline_link_click_ctr), // O: ctr
+                safeValue(data.cpm), // P: cpm
+                safeValue(data.cpc), // Q: cpc
+                safeValue(data.frequency), // R: frequency
                 purchases, // S: purchases
                 purchaseValue, // T: purchase_value
-                safeDivide(purchaseValue, spend), // U: purchase_roas
-                safeDivide(spend, purchases), // V: cost_per_purchase
+                safeValue(data.purchase_roas?.[0]?.value), // U: purchase_roas
+                safeValue(data.cost_per_purchase?.[0]?.value), // V: cost_per_purchase
                 subscribes, // W: subscribes
-                safeDivide(spend, subscribes), // X: cost_per_subscribe
+                safeValue(data.cost_per_action_type?.find(a => a.action_type === 'subscribe')?.value), // X: cost_per_subscribe
                 subscribeValue, // Y: subscribe_value
                 addToCart, // Z: add_to_cart
                 initiateCheckout, // AA: initiate_checkout
-                safeDivide(v25, impressions) * 100, // AB: video_play_pct_25
-                safeDivide(v50, impressions) * 100, // AC: video_play_pct_50
-                safeDivide(v75, impressions) * 100, // AD: video_play_pct_75
-                safeDivide(v100, impressions) * 100, // AE: video_play_pct_100
-                videoViews3s, // AF: video_views_3s
-                videoViewsThruplay, // AG: video_views_thruplay
-                hookRate, // AH: hook_rate
-                holdRate, // AI: hold_rate
-                1 // AJ: days_running (Needs to fetch Ad creation_time, defaulting to 1 for lightweight)
+                safeDivide(v25, impressions) * 100, // AB: Video Play 25%
+                safeDivide(v50, impressions) * 100, // AC: Video Play 50%
+                safeDivide(v75, impressions) * 100, // AD: Video Play 75%
+                safeDivide(v100, impressions) * 100, // AE: Video Play 100%
+                videoViews3s, // AF: Video Views 3s
+                videoViewsThruplay, // AG: Video Views Thruplay
+                hookRate, // AH: Hook Rate (%)
+                holdRate, // AI: Hold Rate (%)
+                1 // AJ: Days Running
             ];
         };
 

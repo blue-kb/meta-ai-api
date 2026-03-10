@@ -20,48 +20,41 @@ export default async function handler(req, res) {
 
         const formatRow = (data) => {
             const spend = parseFloat(data.spend) || 0;
-
             const purchases = parseMetaAction(data.actions, 'purchase') || parseMetaAction(data.actions, 'offsite_conversion.fb_pixel_purchase');
             const purchaseValue = parseMetaAction(data.action_values, 'purchase') || parseMetaAction(data.action_values, 'offsite_conversion.fb_pixel_purchase');
             const subscribes = parseMetaAction(data.actions, 'subscribe');
             const subscribeValue = parseMetaAction(data.action_values, 'subscribe');
             const addToCart = parseMetaAction(data.actions, 'add_to_cart');
             const initiateCheckout = parseMetaAction(data.actions, 'initiate_checkout');
+            const v3s = parseMetaAction(data.actions, 'video_view');
+            const thruplay = parseMetaAction(data.actions, 'thruplay');
 
             return [
-                targetDate, // A: date
-                data.adset_id, // B: adset_id
-                data.adset_name, // C: adset_name
-                data.campaign_id, // D: campaign_id
-                data.campaign_name, // E: campaign_name
-                '', // F: status
-                '', // G: targeting_type
-                '', // H: optimization_goal
-                '', // I: bid_strategy
-                0, // J: bid_amount
-                0, // K: daily_budget
-                spend, // L: spend
-                data.impressions || 0, // M: impressions
-                data.reach || 0, // N: reach
-                data.clicks || 0, // O: clicks
-                data.inline_link_clicks || 0, // P: link_clicks
-                data.inline_link_click_ctr || 0, // Q: ctr
-                data.cpm || 0, // R: cpm
-                data.cpc || safeDivide(spend, data.inline_link_clicks), // S: cpc
-                data.frequency || 0, // T: frequency
-                purchases, // U: purchases
-                purchaseValue, // V: purchase_value
-                safeDivide(purchaseValue, spend), // W: purchase_roas
-                safeDivide(spend, purchases), // X: cost_per_purchase
-                subscribes, // Y: subscribes
-                safeDivide(spend, subscribes), // Z: cost_per_subscribe
-                subscribeValue, // AA: subscribe_value
-                addToCart, // AB: add_to_cart
-                initiateCheckout, // AC: initiate_checkout
-                purchases, // AD: conversions_7d (simplified)
-                '', // AE: learning_phase_status
-                0, // AF: audience_size_min
-                0 // AG: audience_size_max
+                targetDate, // A: date (YYYY-MM-DD)
+                safeValue(data.adset_id, ''), // B: adset_id
+                safeValue(data.adset_name, ''), // C: adset_name
+                safeValue(data.campaign_id, ''), // D: campaign_id
+                safeValue(data.campaign_name, ''), // E: campaign_name
+                safeValue(data.spend), // F: spend
+                safeValue(data.impressions), // G: impressions
+                safeValue(data.reach), // H: reach
+                safeValue(data.clicks), // I: clicks
+                safeValue(data.inline_link_clicks), // J: link_clicks
+                safeValue(data.inline_link_click_ctr), // K: ctr
+                safeValue(data.cpm), // L: cpm
+                safeValue(data.cpc), // M: cpc
+                safeValue(data.frequency), // N: frequency
+                purchases, // O: purchases
+                purchaseValue, // P: purchase_value
+                safeValue(data.purchase_roas?.[0]?.value), // Q: purchase_roas
+                safeValue(data.cost_per_purchase?.[0]?.value), // R: cost_per_purchase
+                subscribes, // S: subscribes
+                safeValue(data.cost_per_action_type?.find(a => a.action_type === 'subscribe')?.value), // T: cost_per_subscribe
+                subscribeValue, // U: subscribe_value
+                addToCart, // V: add_to_cart
+                initiateCheckout, // W: initiate_checkout
+                v3s, // X: video_views_3s
+                thruplay // Y: video_views_thruplay
             ];
         };
 

@@ -20,43 +20,39 @@ export default async function handler(req, res) {
 
         const formatRow = (data) => {
             const spend = parseFloat(data.spend) || 0;
-
             const purchases = parseMetaAction(data.actions, 'purchase') || parseMetaAction(data.actions, 'offsite_conversion.fb_pixel_purchase');
             const purchaseValue = parseMetaAction(data.action_values, 'purchase') || parseMetaAction(data.action_values, 'offsite_conversion.fb_pixel_purchase');
             const subscribes = parseMetaAction(data.actions, 'subscribe');
             const subscribeValue = parseMetaAction(data.action_values, 'subscribe');
             const addToCart = parseMetaAction(data.actions, 'add_to_cart');
             const initiateCheckout = parseMetaAction(data.actions, 'initiate_checkout');
+            const v3s = parseMetaAction(data.actions, 'video_view');
+            const thruplay = parseMetaAction(data.actions, 'thruplay');
 
             return [
-                targetDate, // A: date
-                data.campaign_id, // B: campaign_id
-                data.campaign_name, // C: campaign_name
-                '', // D: objective (requires fetching raw campaign node, skipping for speed)
-                '', // E: status
-                '', // F: buying_type
-                '', // G: budget_type
-                0, // H: daily_budget
-                spend, // I: spend
-                data.impressions || 0, // J: impressions
-                data.reach || 0, // K: reach
-                data.clicks || 0, // L: clicks
-                data.inline_link_clicks || 0, // M: link_clicks
-                data.inline_link_click_ctr || 0, // N: ctr
-                data.cpm || 0, // O: cpm
-                data.cpc || safeDivide(spend, data.inline_link_clicks), // P: cpc
-                data.frequency || 0, // Q: frequency
-                purchases, // R: purchases
-                purchaseValue, // S: purchase_value
-                safeDivide(purchaseValue, spend), // T: purchase_roas
-                safeDivide(spend, purchases), // U: cost_per_purchase
-                subscribes, // V: subscribes
-                safeDivide(spend, subscribes), // W: cost_per_subscribe
-                subscribeValue, // X: subscribe_value
-                addToCart, // Y: add_to_cart
-                initiateCheckout, // Z: initiate_checkout
-                '', // AA: learning_phase_status
-                0 // AB: budget_split_pct (requires knowing total account spend, handled in Sheets if needed)
+                targetDate, // A: date (YYYY-MM-DD)
+                safeValue(data.campaign_id, ''), // B: campaign_id
+                safeValue(data.campaign_name, ''), // C: campaign_name
+                safeValue(data.spend), // D: spend
+                safeValue(data.impressions), // E: impressions
+                safeValue(data.reach), // F: reach
+                safeValue(data.clicks), // G: clicks
+                safeValue(data.inline_link_clicks), // H: link_clicks
+                safeValue(data.inline_link_click_ctr), // I: ctr
+                safeValue(data.cpm), // J: cpm
+                safeValue(data.cpc), // K: cpc
+                safeValue(data.frequency), // L: frequency
+                purchases, // M: purchases
+                purchaseValue, // N: purchase_value
+                safeValue(data.purchase_roas?.[0]?.value), // O: purchase_roas
+                safeValue(data.cost_per_purchase?.[0]?.value), // P: cost_per_purchase
+                subscribes, // Q: subscribes
+                safeValue(data.cost_per_action_type?.find(a => a.action_type === 'subscribe')?.value), // R: cost_per_subscribe
+                subscribeValue, // S: subscribe_value
+                addToCart, // T: add_to_cart
+                initiateCheckout, // U: initiate_checkout
+                v3s, // V: video_views_3s
+                thruplay // W: video_views_thruplay
             ];
         };
 

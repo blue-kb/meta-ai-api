@@ -19,6 +19,8 @@ export default async function handler(req, res) {
         });
         const rowData = insights[0] || {};
 
+        const spend = parseFloat(rowData.spend) || 0;
+
         // Parse actions
         const purchases = parseMetaAction(rowData.actions, 'purchase') || parseMetaAction(rowData.actions, 'offsite_conversion.fb_pixel_purchase');
         const purchaseValue = parseMetaAction(rowData.action_values, 'purchase') || parseMetaAction(rowData.action_values, 'offsite_conversion.fb_pixel_purchase');
@@ -30,36 +32,34 @@ export default async function handler(req, res) {
         const videoViews3s = parseMetaAction(rowData.actions, 'video_view');
         const videoViewsThruplay = parseMetaAction(rowData.actions, 'thruplay');
 
-        const spend = parseFloat(rowData.spend) || 0;
-
         // Format to matches schema
         const formatRow = (data) => [
-            targetDate, // A: date
+            targetDate, // A: date (YYYY-MM-DD)
             spend, // B: spend
-            data.impressions || 0, // C: impressions
-            data.reach || 0, // D: reach
-            data.clicks || 0, // E: clicks
-            data.inline_link_clicks || 0, // F: link_clicks
-            data.inline_link_click_ctr || 0, // G: ctr
-            data.cpm || 0, // H: cpm
-            data.cpc || safeDivide(spend, data.inline_link_clicks), // I: cpc
-            data.frequency || 0, // J: frequency
+            safeValue(data.impressions), // C: impressions
+            safeValue(data.reach), // D: reach
+            safeValue(data.clicks), // E: clicks
+            safeValue(data.inline_link_clicks), // F: link_clicks
+            safeValue(data.inline_link_click_ctr), // G: ctr
+            safeValue(data.cpm), // H: cpm
+            safeValue(data.cpc), // I: cpc
+            safeValue(data.frequency), // J: frequency
             purchases, // K: purchases
             purchaseValue, // L: purchase_value
-            safeDivide(purchaseValue, spend), // M: purchase_roas
-            safeDivide(spend, purchases), // N: cost_per_purchase
+            safeValue(rowData.purchase_roas?.[0]?.value), // M: purchase_roas (alt calc)
+            safeValue(rowData.cost_per_purchase?.[0]?.value), // N: cost_per_purchase
             subscribes, // O: subscribes
-            safeDivide(spend, subscribes), // P: cost_per_subscribe
+            safeValue(rowData.cost_per_action_type?.find(a => a.action_type === 'subscribe')?.value), // P: cost_per_subscribe
             subscribeValue, // Q: subscribe_value
             addToCart, // R: add_to_cart
             initiateCheckout, // S: initiate_checkout
             landingPageViews, // T: landing_page_views
             videoViews3s, // U: video_views_3s
             videoViewsThruplay, // V: video_views_thruplay
-            0, // W: budget_in_learning_pct (requires complex adset looping, mocking to 0 for speed)
-            0, // X: active_campaigns (mocked)
-            0, // Y: active_adsets 
-            0  // Z: active_ads
+            0, // W: budget_in_learning_pct (requires more nodes)
+            0, // X: active_campaigns
+            0, // Y: active_adsets
+            0 // Z: active_ads
         ];
 
         const tabName = getTabName('Account');
