@@ -89,12 +89,16 @@ export function safeDivide(numerator, denominator) {
 }
 
 /**
- * Get the current month's tab name
+ * Get the tab name for a specific date (e.g. "Account_2026-03")
  */
-export function getTabName(levelPrefix) {
-    // Use "yesterday" as the date since we are syncing yesterday's data
-    const date = new Date();
-    date.setDate(date.getDate() - 1);
+export function getTabName(levelPrefix, referenceDateStr) {
+    let date;
+    if (referenceDateStr) {
+        date = new Date(referenceDateStr);
+    } else {
+        date = new Date();
+        date.setDate(date.getDate() - 1);
+    }
     const year = date.getUTCFullYear();
     const month = String(date.getUTCMonth() + 1).padStart(2, '0');
     return `${levelPrefix}_${year}-${month}`;
@@ -164,7 +168,14 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
     }
 
     // 4. Format rows
-    const rows = metaData.map(formatRowFunc);
+    const rows = metaData.map(data => {
+        const row = formatRowFunc(data);
+        // If first column is a date (YYYY-MM-DD), prepend ' to force literal string
+        if (row[0] && typeof row[0] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row[0])) {
+            row[0] = `'${row[0]}`;
+        }
+        return row;
+    });
 
     if (rows.length === 0) return 0; // nothing to append
 

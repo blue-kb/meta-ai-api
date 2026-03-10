@@ -68,7 +68,7 @@ export default async function handler(req, res) {
             0 // Z: active_ads
         ];
 
-        const tabName = getTabName('Account');
+        const tabName = getTabName('Account', targetDate);
         const headers = [
             'Date', 'Spend', 'Impressions', 'Reach', 'Clicks', 'Link Clicks', 'CTR (%)', 'CPM', 'CPC', 'Frequency',
             'Purchases', 'Purchase Value', 'Purchase ROAS', 'Cost per Purchase', 'Subscribes',

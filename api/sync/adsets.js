@@ -64,7 +64,7 @@ export default async function handler(req, res) {
             ];
         };
 
-        const tabName = getTabName('AdSets');
+        const tabName = getTabName('AdSets', targetDate);
         const headers = [
             'Date', 'AdSet ID', 'AdSet Name', 'Campaign ID', 'Campaign Name', 'Spend', 'Impressions',
             'Reach', 'Clicks', 'Link Clicks', 'CTR (%)', 'CPM', 'CPC', 'Frequency', 'Purchases',
