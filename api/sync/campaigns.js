@@ -10,8 +10,13 @@ export default async function handler(req, res) {
             'actions', 'action_values'
         ];
 
+        const dateOverride = req.query.date; // YYYY-MM-DD
+        const targetDate = dateOverride || getYesterdayDateString();
+
         // Fetch campaign level data
-        const insights = await fetchMetaInsights('campaign', fields);
+        const insights = await fetchMetaInsights('campaign', fields, {
+            time_range: JSON.stringify({ 'since': targetDate, 'until': targetDate })
+        });
 
         const formatRow = (data) => {
             const spend = parseFloat(data.spend) || 0;
@@ -24,7 +29,7 @@ export default async function handler(req, res) {
             const initiateCheckout = parseMetaAction(data.actions, 'initiate_checkout');
 
             return [
-                getYesterdayDateString(), // A: date
+                targetDate, // A: date
                 data.campaign_id, // B: campaign_id
                 data.campaign_name, // C: campaign_name
                 '', // D: objective (requires fetching raw campaign node, skipping for speed)

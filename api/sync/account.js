@@ -10,8 +10,13 @@ export default async function handler(req, res) {
             'actions', 'action_values'
         ];
 
+        const dateOverride = req.query.date; // YYYY-MM-DD
+        const targetDate = dateOverride || getYesterdayDateString();
+
         // Fetch account level data
-        const insights = await fetchMetaInsights('account', fields);
+        const insights = await fetchMetaInsights('account', fields, {
+            time_range: JSON.stringify({ 'since': targetDate, 'until': targetDate })
+        });
         const rowData = insights[0] || {};
 
         // Parse actions
@@ -29,7 +34,7 @@ export default async function handler(req, res) {
 
         // Format to matches schema
         const formatRow = (data) => [
-            getYesterdayDateString(), // A: date
+            targetDate, // A: date
             spend, // B: spend
             data.impressions || 0, // C: impressions
             data.reach || 0, // D: reach

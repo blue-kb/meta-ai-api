@@ -13,8 +13,13 @@ export default async function handler(req, res) {
             'video_p75_watched_actions', 'video_p100_watched_actions'
         ];
 
+        const dateOverride = req.query.date; // YYYY-MM-DD
+        const targetDate = dateOverride || getYesterdayDateString();
+
         // Fetch ad level data
-        const insights = await fetchMetaInsights('ad', fields);
+        const insights = await fetchMetaInsights('ad', fields, {
+            time_range: JSON.stringify({ 'since': targetDate, 'until': targetDate })
+        });
 
         const formatRow = (data) => {
             const spend = parseFloat(data.spend) || 0;
@@ -40,7 +45,7 @@ export default async function handler(req, res) {
             const holdRate = safeDivide(videoViewsThruplay, videoViews3s) * 100;
 
             return [
-                getYesterdayDateString(), // A: date
+                targetDate, // A: date
                 data.ad_id, // B: ad_id
                 data.ad_name, // C: ad_name
                 data.adset_id, // D: adset_id

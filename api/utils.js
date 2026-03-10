@@ -39,11 +39,15 @@ export async function fetchMetaInsights(level, fields, extraParams = {}) {
         access_token: token,
         level: level,
         fields: fields.join(','),
-        date_preset: 'yesterday',
         time_increment: 1,
-        limit: 500, // Handle pagination if needed, but 'yesterday' account level should be 1 row. Campaigns/AdSets/Ads might need pagination if > 500
+        limit: 500,
         ...extraParams
     };
+
+    // Use date_preset only if time_range is NOT provided
+    if (!params.time_range && !params.date_preset) {
+        params.date_preset = 'yesterday';
+    }
 
     let allData = [];
     let currentUrl = url;
@@ -97,12 +101,19 @@ export function getTabName(levelPrefix) {
 }
 
 /**
+ * Get date string (YYYY-MM-DD) for a specific date
+ */
+export function getDateString(date) {
+    return date.toISOString().split('T')[0];
+}
+
+/**
  * Get yesterday's date string (YYYY-MM-DD)
  */
 export function getYesterdayDateString() {
     const date = new Date();
     date.setDate(date.getDate() - 1);
-    return date.toISOString().split('T')[0];
+    return getDateString(date);
 }
 
 /**
