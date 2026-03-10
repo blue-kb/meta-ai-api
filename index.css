@@ -1,0 +1,227 @@
+:root {
+    --bg-aura: #f8fafc;
+    --bg-content: #ffffff;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --accent: #4f46e5;
+    --accent-soft: rgba(79, 70, 229, 0.08);
+    --border: #e2e8f0;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-aura);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+nav {
+    height: 80px;
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.brand-glyph {
+    color: var(--accent);
+}
+
+.brand-text {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: -0.01em;
+}
+
+.accent {
+    color: var(--accent);
+}
+
+.status-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    background: #ecfdf5;
+    border: 1px solid #d1fae5;
+    border-radius: 20px;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 6px #10b981;
+}
+
+.status-text {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #065f46;
+    text-transform: uppercase;
+}
+
+.hero {
+    text-align: center;
+    padding: 100px 0 60px;
+}
+
+h1 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 3.5rem;
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    margin-bottom: 1.5rem;
+    color: #1e293b;
+}
+
+.highlight {
+    color: var(--accent);
+}
+
+.hero p {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 40px;
+}
+
+.panel {
+    background: var(--bg-content);
+    padding: 2.5rem;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.panel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.panel-icon {
+    font-size: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+h3 {
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    font-size: 1.25rem;
+}
+
+p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.schedule-list {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.schedule-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.schedule-item mark {
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 0 0.4rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.feature-tags {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.feature-tags span {
+    padding: 0.3rem 0.6rem;
+    background: #f1f5f9;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.highlight-panel {
+    border-color: var(--accent);
+    background: linear-gradient(to bottom right, #ffffff, #f5f3ff);
+}
+
+.primary-btn {
+    display: inline-block;
+    margin-top: 2rem;
+    padding: 1rem 1.5rem;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    width: 100%;
+    text-align: center;
+    transition: opacity 0.2s;
+}
+
+.primary-btn:hover {
+    opacity: 0.9;
+}
+
+.footer {
+    padding: 60px 0;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    border-top: 1px solid var(--border);
+    margin-top: 100px;
+}
+
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2.5rem;
+    }
+}
