@@ -171,6 +171,32 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
 }
 
 /**
+ * Wipe all data and reset headers for a tab
+ */
+export async function wipeAndResetHeaders(sheetsClient, tabName, headers) {
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+    if (!spreadsheetId) throw new Error('Missing GOOGLE_SHEET_ID');
+
+    // 1. Clear everything
+    await sheetsClient.spreadsheets.values.clear({
+        spreadsheetId,
+        range: `${tabName}!A:Z`
+    });
+
+    // 2. Write headers
+    await sheetsClient.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${tabName}!A1`,
+        valueInputOption: 'RAW',
+        requestBody: {
+            values: [headers]
+        }
+    });
+
+    return true;
+}
+
+/**
  * Parse standard fields from meta row
  */
 export function parseMetaAction(actions, actionType) {
