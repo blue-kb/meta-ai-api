@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import axios from 'axios';
+// axios removed in favor of native fetch
 
 /**
  * Get authenticatd Google Sheets client
@@ -49,8 +49,18 @@ export async function fetchMetaInsights(level, fields, extraParams = {}) {
     let currentUrl = url;
 
     while (currentUrl) {
-        const res = await axios.get(currentUrl, { params: currentUrl === url ? params : {} });
-        const data = res.data;
+        let fetchUrl = currentUrl;
+        if (currentUrl === url) {
+            const queryParams = new URLSearchParams(params).toString();
+            fetchUrl = `${url}?${queryParams}`;
+        }
+
+        const response = await fetch(fetchUrl);
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(`Meta API error: ${data.error?.message || response.statusText}`);
+        }
 
         if (data.data && data.data.length > 0) {
             allData = allData.concat(data.data);
