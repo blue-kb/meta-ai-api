@@ -16,7 +16,10 @@ export async function fetchMetaInsights(level, fields, extraParams = {}) {
     const token = process.env.META_ACCESS_TOKEN;
     if (!actId || !token) throw new Error('Missing META_ACCOUNT_ID or META_ACCESS_TOKEN');
     const url = `https://graph.facebook.com/v19.0/act_${actId}/insights`;
-    const params = { access_token: token, level, fields: fields.join(','), time_increment: 1, limit: 500, ...extraParams };
+    const params = {
+        access_token: token, level, fields: fields.join(','),
+        time_increment: 1, limit: 500, ...extraParams
+    };
     if (!params.time_range && !params.date_preset) params.date_preset = 'yesterday';
     let allData = [];
     let currentUrl = url;
@@ -47,7 +50,9 @@ export function getTabName(levelPrefix, referenceDateStr) {
     return `${levelPrefix}_${year}-${month}`;
 }
 
-export function getDateString(date) { return date.toISOString().split('T')[0]; }
+export function getDateString(date) {
+    return date.toISOString().split('T')[0];
+}
 
 export function getYesterdayDateString() {
     const date = new Date();
@@ -55,8 +60,8 @@ export function getYesterdayDateString() {
     return getDateString(date);
 }
 
-// ─── Schema ───────────────────────────────────────────────────────────────────
-// Shared metric columns (59 columns) — same for all levels
+// ─── Schema ─────────────────────────────────────────────────────────────────── 
+// Shared metric columns (55 columns) — same for all levels
 const COMMON_METRICS = [
     // Delivery
     'spend', 'impressions', 'reach', 'frequency', 'cpm', 'cpc', 'ctr',
@@ -67,10 +72,10 @@ const COMMON_METRICS = [
     // Outbound
     'outbound_clicks', 'outbound_clicks_ctr',
     // Conversions (count)
-    'landing_page_view', 'add_to_cart', 'initiate_checkout', 'purchase', 'subscribe',
-    'video_view', 'thruplay', 'post_engagement', 'page_engagement',
-    'like', 'comment', 'share', 'post_reaction', 'post_save', 'leadgen',
-    'app_install', 'mobile_app_install', 'link_click_action',
+    'landing_page_view', 'add_to_cart', 'initiate_checkout',
+    'purchase', 'subscribe', 'video_view', 'thruplay',
+    'post_engagement', 'page_engagement', 'like', 'comment', 'share',
+    'post_reaction', 'post_save', 'leadgen', 'app_install', 'mobile_app_install', 'link_click_action',
     // Conversion values
     'purchase_value', 'subscribe_value',
     // Cost per action
@@ -80,10 +85,7 @@ const COMMON_METRICS = [
     'unique_landing_page_view', 'unique_add_to_cart', 'unique_initiate_checkout',
     'unique_purchase', 'unique_subscribe',
     // ROAS
-    'purchase_roas', 'website_purchase_roas',
-    // Estimated
-    'estimated_ad_recallers', 'estimated_ad_recall_rate',
-    'estimated_ad_recall_rate_lower_bound', 'estimated_ad_recall_rate_upper_bound'
+    'purchase_roas', 'website_purchase_roas'
 ];
 
 export const ACCOUNT_HEADERS = [
@@ -110,9 +112,9 @@ export const AD_HEADERS = [
     ...COMMON_METRICS,
     // Video
     'video_play_actions', 'video_p25_watched_actions', 'video_p50_watched_actions',
-    'video_p75_watched_actions', 'video_p100_watched_actions',
-    'video_30_sec_watched_actions', 'video_thruplay_watched_actions',
-    'video_avg_time_watched_actions', 'video_continuous_2_sec_watched_actions',
+    'video_p75_watched_actions', 'video_p100_watched_actions', 'video_30_sec_watched_actions',
+    'video_thruplay_watched_actions', 'video_avg_time_watched_actions',
+    'video_continuous_2_sec_watched_actions',
     // Canvas
     'canvas_avg_view_time', 'canvas_avg_view_percent'
 ];
@@ -126,12 +128,10 @@ export const COMMON_INSIGHT_FIELDS = [
     'social_spend', 'full_view_impressions', 'full_view_reach',
     'outbound_clicks', 'outbound_clicks_ctr',
     'actions', 'action_values', 'cost_per_action_type', 'unique_actions',
-    'purchase_roas', 'website_purchase_roas',
-    'estimated_ad_recallers', 'estimated_ad_recall_rate',
-    'estimated_ad_recall_rate_lower_bound', 'estimated_ad_recall_rate_upper_bound'
+    'purchase_roas', 'website_purchase_roas'
 ];
 
-// Build the 59 shared metric columns from one insights row
+// Build the 55 shared metric columns from one insights row
 export function buildMetricsRow(data) {
     const outboundClicks = parseMetaAction(data.outbound_clicks, 'link_click');
     const outboundClicksCtr = parseMetaAction(data.outbound_clicks_ctr, 'link_click');
@@ -152,39 +152,50 @@ export function buildMetricsRow(data) {
         // Outbound
         outboundClicks, outboundClicksCtr,
         // Conversions (count)
-        act('landing_page_view'), act('add_to_cart'), act('initiate_checkout'),
+        act('landing_page_view'),
+        act('add_to_cart'),
+        act('initiate_checkout'),
         act('purchase') || act('offsite_conversion.fb_pixel_purchase'),
         act('subscribe'),
-        act('video_view'), act('thruplay'), act('post_engagement'), act('page_engagement'),
-        act('like'), act('comment'), act('share'), act('post_reaction'),
+        act('video_view'),
+        act('thruplay'),
+        act('post_engagement'),
+        act('page_engagement'),
+        act('like'),
+        act('comment'),
+        act('share'),
+        act('post_reaction'),
         act('onsite_conversion.post_save'),
         act('leadgen_grouped') || act('leadgen'),
-        act('app_install'), act('mobile_app_install'), act('link_click'),
+        act('app_install'),
+        act('mobile_app_install'),
+        act('link_click'),
         // Conversion values
         val('purchase') || val('offsite_conversion.fb_pixel_purchase'),
         val('subscribe'),
         // Cost per action
-        cp('landing_page_view'), cp('add_to_cart'), cp('initiate_checkout'),
-        cp('purchase') || cp('offsite_conversion.fb_pixel_purchase'), cp('subscribe'),
+        cp('landing_page_view'),
+        cp('add_to_cart'),
+        cp('initiate_checkout'),
+        cp('purchase') || cp('offsite_conversion.fb_pixel_purchase'),
+        cp('subscribe'),
         // Unique conversions
-        uniq('landing_page_view'), uniq('add_to_cart'), uniq('initiate_checkout'),
-        uniq('purchase') || uniq('offsite_conversion.fb_pixel_purchase'), uniq('subscribe'),
+        uniq('landing_page_view'),
+        uniq('add_to_cart'),
+        uniq('initiate_checkout'),
+        uniq('purchase') || uniq('offsite_conversion.fb_pixel_purchase'),
+        uniq('subscribe'),
         // ROAS
         safeValue(data.purchase_roas?.[0]?.value),
         safeValue(data.website_purchase_roas?.[0]?.value),
-        // Estimated
-        safeValue(data.estimated_ad_recallers), safeValue(data.estimated_ad_recall_rate),
-        safeValue(data.estimated_ad_recall_rate_lower_bound),
-        safeValue(data.estimated_ad_recall_rate_upper_bound),
     ];
 }
 
-// ─── appendToSheet ────────────────────────────────────────────────────────────
+// ─── appendToSheet ──────────────────────────────────────────────────────────── 
 export async function appendToSheet(sheetsClient, tabName, headers, formatRowFunc, metaData) {
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
     if (!spreadsheetId) throw new Error('Missing GOOGLE_SHEET_ID');
     if (metaData.length === 0) return 0;
-
     const newRows = metaData.map(data => {
         const row = formatRowFunc(data);
         if (row[0] && typeof row[0] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row[0])) {
@@ -192,9 +203,7 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
         }
         return row;
     });
-
     const targetDates = new Set(newRows.map(row => String(row[0]).replace(/^'/, '')));
-
     const spreadsheet = await sheetsClient.spreadsheets.get({ spreadsheetId });
     const sheetExists = spreadsheet.data.sheets.some(s => s.properties.title === tabName);
     if (!sheetExists) {
@@ -203,33 +212,28 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
             requestBody: { requests: [{ addSheet: { properties: { title: tabName } } }] }
         });
     }
-
     await sheetsClient.spreadsheets.values.update({
-        spreadsheetId, range: `${tabName}!A1`, valueInputOption: 'RAW',
-        requestBody: { values: [headers] }
+        spreadsheetId, range: `${tabName}!A1`,
+        valueInputOption: 'RAW', requestBody: { values: [headers] }
     });
-
     const existing = await sheetsClient.spreadsheets.values.get({
         spreadsheetId, range: `${tabName}!A2:ZZZ`
     });
-
     const keepRows = (existing.data.values || []).filter(row => {
         const cellDate = String(row[0] || '').replace(/^'/, '');
         return !targetDates.has(cellDate);
     });
-
     const allRows = [...keepRows, ...newRows];
     allRows.sort((a, b) => {
         const da = String(a[0] || '').replace(/^'/, '');
         const db = String(b[0] || '').replace(/^'/, '');
         return da.localeCompare(db);
     });
-
     await sheetsClient.spreadsheets.values.clear({ spreadsheetId, range: `${tabName}!A2:ZZZ` });
     if (allRows.length > 0) {
         await sheetsClient.spreadsheets.values.update({
-            spreadsheetId, range: `${tabName}!A2`, valueInputOption: 'USER_ENTERED',
-            requestBody: { values: allRows }
+            spreadsheetId, range: `${tabName}!A2`,
+            valueInputOption: 'USER_ENTERED', requestBody: { values: allRows }
         });
     }
     return newRows.length;
@@ -240,8 +244,8 @@ export async function wipeAndResetHeaders(sheetsClient, tabName, headers) {
     if (!spreadsheetId) throw new Error('Missing GOOGLE_SHEET_ID');
     await sheetsClient.spreadsheets.values.clear({ spreadsheetId, range: `${tabName}!A:ZZZ` });
     await sheetsClient.spreadsheets.values.update({
-        spreadsheetId, range: `${tabName}!A1`, valueInputOption: 'RAW',
-        requestBody: { values: [headers] }
+        spreadsheetId, range: `${tabName}!A1`,
+        valueInputOption: 'RAW', requestBody: { values: [headers] }
     });
     return true;
 }
