@@ -1,7 +1,6 @@
 import { getSheetsClient, fetchMetaInsights, getTabName, getYesterdayDateString, appendToSheet, parseMetaAction, safeDivide, safeValue } from '../utils.js';
 
 export default async function handler(req, res) {
-    // Security check
     const apiKey = req.headers['x-api-key'];
     if (apiKey !== process.env.AI_AGENT_API_KEY) {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -9,77 +8,88 @@ export default async function handler(req, res) {
 
     try {
         const sheetsClient = await getSheetsClient();
-
         const fields = [
             'spend', 'impressions', 'reach', 'clicks', 'inline_link_clicks',
             'inline_link_click_ctr', 'cpm', 'cpc', 'frequency',
-            'actions', 'action_values'
+            'actions', 'action_values', 'purchase_roas', 'cost_per_action_type'
         ];
 
-        const dateOverride = req.query.date; // YYYY-MM-DD
-        const targetDate = dateOverride || getYesterdayDateString();
+        // Support ?date=YYYY-MM-DD (single) or ?start=...&end=... (range)
+        let startDate, endDate;
+        if (req.query.start && req.query.end) {
+            startDate = req.query.start;
+            endDate = req.query.end;
+        } else {
+            const d = req.query.date || getYesterdayDateString();
+            startDate = endDate = d;
+        }
 
-        // Fetch account level data
         const insights = await fetchMetaInsights('account', fields, {
-            time_range: JSON.stringify({ 'since': targetDate, 'until': targetDate })
+            time_range: JSON.stringify({ since: startDate, until: endDate })
         });
-        const rowData = insights[0] || {};
 
-        const spend = parseFloat(rowData.spend) || 0;
-
-        // Parse actions
-        const purchases = parseMetaAction(rowData.actions, 'purchase') || parseMetaAction(rowData.actions, 'offsite_conversion.fb_pixel_purchase');
-        const purchaseValue = parseMetaAction(rowData.action_values, 'purchase') || parseMetaAction(rowData.action_values, 'offsite_conversion.fb_pixel_purchase');
-        const subscribes = parseMetaAction(rowData.actions, 'subscribe');
-        const subscribeValue = parseMetaAction(rowData.action_values, 'subscribe');
-        const addToCart = parseMetaAction(rowData.actions, 'add_to_cart');
-        const initiateCheckout = parseMetaAction(rowData.actions, 'initiate_checkout');
-        const landingPageViews = parseMetaAction(rowData.actions, 'landing_page_view');
-        const videoViews3s = parseMetaAction(rowData.actions, 'video_view');
-        const videoViewsThruplay = parseMetaAction(rowData.actions, 'thruplay');
-
-        // Format to matches schema
-        const formatRow = (data) => [
-            targetDate, // A: date (YYYY-MM-DD)
-            spend, // B: spend
-            safeValue(data.impressions), // C: impressions
-            safeValue(data.reach), // D: reach
-            safeValue(data.clicks), // E: clicks
-            safeValue(data.inline_link_clicks), // F: link_clicks
-            safeValue(data.inline_link_click_ctr), // G: ctr
-            safeValue(data.cpm), // H: cpm
-            safeValue(data.cpc), // I: cpc
-            safeValue(data.frequency), // J: frequency
-            purchases, // K: purchases
-            purchaseValue, // L: purchase_value
-            safeValue(rowData.purchase_roas?.[0]?.value), // M: purchase_roas (alt calc)
-            safeValue(rowData.cost_per_purchase?.[0]?.value), // N: cost_per_purchase
-            subscribes, // O: subscribes
-            safeValue(rowData.cost_per_action_type?.find(a => a.action_type === 'subscribe')?.value), // P: cost_per_subscribe
-            subscribeValue, // Q: subscribe_value
-            addToCart, // R: add_to_cart
-            initiateCheckout, // S: initiate_checkout
-            landingPageViews, // T: landing_page_views
-            videoViews3s, // U: video_views_3s
-            videoViewsThruplay, // V: video_views_thruplay
-            0, // W: budget_in_learning_pct (requires more nodes)
-            0, // X: active_campaigns
-            0, // Y: active_adsets
-            0 // Z: active_ads
-        ];
-
-        const tabName = getTabName('Account', targetDate);
         const headers = [
-            'Date', 'Spend', 'Impressions', 'Reach', 'Clicks', 'Link Clicks', 'CTR (%)', 'CPM', 'CPC', 'Frequency',
-            'Purchases', 'Purchase Value', 'Purchase ROAS', 'Cost per Purchase', 'Subscribes',
-            'Cost per Subscribe', 'Subscribe Value', 'Add to Cart', 'Initiate Checkout', 'Landing Page Views',
-            'Video Views 3s', 'Video Views Thruplay', 'Budget in Learning %', 'Active Campaigns',
-            'Active AdSets', 'Active Ads'
+            'date', 'spend', 'impressions', 'reach', 'clicks', 'inline_link_clicks',
+            'inline_link_click_ctr', 'cpm', 'cpc', 'frequency',
+            'purchase', 'purchase_value', 'purchase_roas', 'cost_per_purchase',
+            'subscribe', 'cost_per_subscribe', 'subscribe_value',
+            'add_to_cart', 'initiate_checkout', 'landing_page_view',
+            'video_view', 'thruplay', 'budget_in_learning_pct',
+            'active_campaigns', 'active_adsets', 'active_ads'
         ];
 
-        const added = await appendToSheet(sheetsClient, tabName, headers, formatRow, [rowData]);
+        const formatRow = (data) => {
+            const spend = parseFloat(data.spend) || 0;
+            const purchases = parseMetaAction(data.actions, 'purchase') || parseMetaAction(data.actions, 'offsite_conversion.fb_pixel_purchase');
+            const purchaseValue = parseMetaAction(data.action_values, 'purchase') || parseMetaAction(data.action_values, 'offsite_conversion.fb_pixel_purchase');
+            const subscribes = parseMetaAction(data.actions, 'subscribe');
+            const subscribeValue = parseMetaAction(data.action_values, 'subscribe');
+            const addToCart = parseMetaAction(data.actions, 'add_to_cart');
+            const initiateCheckout = parseMetaAction(data.actions, 'initiate_checkout');
+            const landingPageViews = parseMetaAction(data.actions, 'landing_page_view');
+            const videoViews3s = parseMetaAction(data.actions, 'video_view');
+            const videoViewsThruplay = parseMetaAction(data.actions, 'thruplay');
+            return [
+                data.date_start,
+                spend,
+                safeValue(data.impressions),
+                safeValue(data.reach),
+                safeValue(data.clicks),
+                safeValue(data.inline_link_clicks),
+                safeValue(data.inline_link_click_ctr),
+                safeValue(data.cpm),
+                safeValue(data.cpc),
+                safeValue(data.frequency),
+                purchases,
+                purchaseValue,
+                safeValue(data.purchase_roas?.[0]?.value),
+                safeValue(data.cost_per_action_type?.find(a => a.action_type === 'purchase')?.value),
+                subscribes,
+                safeValue(data.cost_per_action_type?.find(a => a.action_type === 'subscribe')?.value),
+                subscribeValue,
+                addToCart,
+                initiateCheckout,
+                landingPageViews,
+                videoViews3s,
+                videoViewsThruplay,
+                0, 0, 0, 0
+            ];
+        };
 
-        return res.status(200).json({ status: 'ok', level: 'account', rows_added: added });
+        // Group by tab (month) in case date range spans months
+        const byTab = {};
+        for (const row of insights) {
+            const tabName = getTabName('Account', row.date_start);
+            if (!byTab[tabName]) byTab[tabName] = [];
+            byTab[tabName].push(row);
+        }
+
+        let totalAdded = 0;
+        for (const [tabName, rows] of Object.entries(byTab)) {
+            totalAdded += await appendToSheet(sheetsClient, tabName, headers, formatRow, rows);
+        }
+
+        return res.status(200).json({ status: 'ok', level: 'account', rows_added: totalAdded });
     } catch (error) {
         console.error('Account sync error:', error);
         return res.status(500).json({ error: error.message || 'Internal Server Error' });
