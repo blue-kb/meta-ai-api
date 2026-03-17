@@ -18,7 +18,10 @@ export async function fetchMetaInsights(level, fields, extraParams = {}) {
     const url = `https://graph.facebook.com/v19.0/act_${actId}/insights`;
     const params = {
         access_token: token, level, fields: fields.join(','),
-        time_increment: 1, limit: 500, ...extraParams
+        time_increment: 1, limit: 500,
+        // Match Meta Ads Manager's default attribution window (7d click + 1d view)
+        action_attribution_windows: JSON.stringify(['7d_click', '1d_view']),
+        ...extraParams
     };
     if (!params.time_range && !params.date_preset) params.date_preset = 'yesterday';
     let allData = [];
