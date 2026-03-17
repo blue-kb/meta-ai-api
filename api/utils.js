@@ -16,7 +16,14 @@ export async function fetchMetaInsights(level, fields, extraParams = {}) {
     const token = process.env.META_ACCESS_TOKEN;
     if (!actId || !token) throw new Error('Missing META_ACCOUNT_ID or META_ACCESS_TOKEN');
     const url = `https://graph.facebook.com/v19.0/act_${actId}/insights`;
-    const params = { access_token: token, level, fields: fields.join(','), time_increment: 1, limit: 500, ...extraParams };
+    const params = {
+        access_token: token,
+        level,
+        fields: fields.join(','),
+        time_increment: 1,
+        limit: 500,
+        ...extraParams
+    };
     if (!params.time_range && !params.date_preset) params.date_preset = 'yesterday';
     let allData = [];
     let currentUrl = url;
@@ -47,7 +54,9 @@ export function getTabName(levelPrefix, referenceDateStr) {
     return `${levelPrefix}_${year}-${month}`;
 }
 
-export function getDateString(date) { return date.toISOString().split('T')[0]; }
+export function getDateString(date) {
+    return date.toISOString().split('T')[0];
+}
 
 export function getYesterdayDateString() {
     const date = new Date();
@@ -56,10 +65,10 @@ export function getYesterdayDateString() {
 }
 
 /**
- * Upsert rows for a specific date into a sheet tab, then sort all rows chronologically.
+ * Upsert rows for one or more dates into a sheet tab, then sort all rows chronologically.
  * - Creates the tab if missing
  * - Always writes correct headers to row 1
- * - Removes existing rows for the same date (dedup)
+ * - Removes existing rows for ALL dates in the new data (bulk dedup)
  * - Merges + sorts all rows by date ascending (earliest first)
  */
 export async function appendToSheet(sheetsClient, tabName, headers, formatRowFunc, metaData) {
@@ -67,7 +76,6 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
     if (!spreadsheetId) throw new Error('Missing GOOGLE_SHEET_ID');
     if (metaData.length === 0) return 0;
 
-    // Format new rows
     const newRows = metaData.map(data => {
         const row = formatRowFunc(data);
         if (row[0] && typeof row[0] === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row[0])) {
@@ -76,7 +84,8 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
         return row;
     });
 
-    const targetDate = String(newRows[0][0]).replace(/^'/, '');
+    // Collect ALL unique dates being updated (for bulk dedup)
+    const targetDates = new Set(newRows.map(row => String(row[0]).replace(/^'/, '')));
 
     // Ensure tab exists
     const spreadsheet = await sheetsClient.spreadsheets.get({ spreadsheetId });
@@ -102,10 +111,10 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
         range: `${tabName}!A2:ZZ`
     });
 
-    // Remove rows matching targetDate (dedup)
+    // Remove rows matching ANY of the target dates (bulk dedup)
     const keepRows = (existing.data.values || []).filter(row => {
         const cellDate = String(row[0] || '').replace(/^'/, '');
-        return cellDate !== targetDate;
+        return !targetDates.has(cellDate);
     });
 
     // Merge and sort ascending by date (earliest first)
@@ -126,7 +135,6 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
             requestBody: { values: allRows }
         });
     }
-
     return newRows.length;
 }
 
@@ -135,7 +143,9 @@ export async function wipeAndResetHeaders(sheetsClient, tabName, headers) {
     if (!spreadsheetId) throw new Error('Missing GOOGLE_SHEET_ID');
     await sheetsClient.spreadsheets.values.clear({ spreadsheetId, range: `${tabName}!A:Z` });
     await sheetsClient.spreadsheets.values.update({
-        spreadsheetId, range: `${tabName}!A1`, valueInputOption: 'RAW',
+        spreadsheetId,
+        range: `${tabName}!A1`,
+        valueInputOption: 'RAW',
         requestBody: { values: [headers] }
     });
     return true;
