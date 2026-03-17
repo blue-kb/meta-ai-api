@@ -156,7 +156,7 @@ export function buildMetricsRow(data) {
         act('add_to_cart'),
         act('initiate_checkout'),
         act('purchase') || act('offsite_conversion.fb_pixel_purchase'),
-        act('subscription') || act('offsite_conversion.fb_pixel_custom.Subscription'),
+        act('offsite_conversion.custom.2045351792704561'),
         act('video_view'),
         act('thruplay'),
         act('post_engagement'),
@@ -172,19 +172,19 @@ export function buildMetricsRow(data) {
         act('link_click'),
         // Conversion values
         val('purchase') || val('offsite_conversion.fb_pixel_purchase'),
-        val('subscription') || val('offsite_conversion.fb_pixel_custom.Subscription'),
+        val('offsite_conversion.custom.2045351792704561'),
         // Cost per action
         cp('landing_page_view'),
         cp('add_to_cart'),
         cp('initiate_checkout'),
         cp('purchase') || cp('offsite_conversion.fb_pixel_purchase'),
-        cp('subscription') || cp('offsite_conversion.fb_pixel_custom.Subscription'),
+        cp('offsite_conversion.custom.2045351792704561'),
         // Unique conversions
         uniq('landing_page_view'),
         uniq('add_to_cart'),
         uniq('initiate_checkout'),
         uniq('purchase') || uniq('offsite_conversion.fb_pixel_purchase'),
-        uniq('subscription') || uniq('offsite_conversion.fb_pixel_custom.Subscription'),
+        uniq('offsite_conversion.custom.2045351792704561'),
         // ROAS
         safeValue(data.purchase_roas?.[0]?.value),
         safeValue(data.website_purchase_roas?.[0]?.value),
