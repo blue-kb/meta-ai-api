@@ -18,6 +18,15 @@ export default async function handler(req, res) {
         endParam = end.toISOString().split('T')[0];
     }
 
+    // Build dates array for frontend display
+    const dates = [];
+    const cur = new Date(startParam);
+    const endDate = new Date(endParam);
+    while (cur <= endDate) {
+        dates.push(cur.toISOString().split('T')[0]);
+        cur.setUTCDate(cur.getUTCDate() + 1);
+    }
+
     const results = [];
     let errors = 0;
 
@@ -41,6 +50,7 @@ export default async function handler(req, res) {
         status: errors === 0 ? 'ok' : 'partial',
         mode,
         date_range: { start: startParam, end: endParam },
+        dates_synced: dates,
         total_syncs: results.length,
         errors,
         results
