@@ -2,52 +2,46 @@ import { fetchMetaInsights } from './utils.js';
 
 const SUBSCRIBE_ID = 'offsite_conversion.custom.2045351792704561';
 
-async function getSubscribeStats(level, params) {
-    const rows = await fetchMetaInsights(level, ['actions', 'action_values', 'spend', 'campaign_name', 'adset_name', 'ad_name'], params);
-    const result = [];
+// Ground truth from Meta Ads Manager CSV export
+const CSV_TRUTH = {
+    '2026-03-01': 16, '2026-03-02': 24, '2026-03-03': 15,
+    '2026-03-04': 18, '2026-03-05': 18, '2026-03-06': 12,
+    '2026-03-07': 17, '2026-03-08': 14, '2026-03-09': 14,
+    '2026-03-10': 14, '2026-03-11': 15, '2026-03-12': 9,
+    '2026-03-13': 9,  '2026-03-14': 11, '2026-03-15': 15,
+    '2026-03-16': 14, '2026-03-17': 15,
+};
+
+export default async function handler(req, res) {
+    // Fetch campaign level for all of March 1-17 in one call
+    const rows = await fetchMetaInsights('campaign', ['actions', 'action_values', 'spend', 'campaign_name'], {
+        time_range: JSON.stringify({ since: '2026-03-01', until: '2026-03-17' })
+    });
+
+    // Aggregate subscribe count per date (sum across all campaigns per day)
+    const byDate = {};
     for (const row of rows) {
+        const date = row.date_start;
+        if (!byDate[date]) byDate[date] = 0;
         for (const a of (row.actions || [])) {
             if (a.action_type === SUBSCRIBE_ID) {
-                result.push({
-                    name: row.campaign_name || row.adset_name || row.ad_name || '?',
-                    value_field: parseFloat(a.value) || 0,
-                    '7d_click': parseFloat(a['7d_click']) || 0,
-                    '1d_view': parseFloat(a['1d_view']) || 0,
-                });
+                byDate[date] += parseFloat(a.value) || 0;
             }
         }
     }
-    return result;
-}
 
-export default async function handler(req, res) {
-    const timeRange = JSON.stringify({ since: '2026-03-10', until: '2026-03-10' });
-    const params = { time_range: timeRange };
+    // Compare API vs CSV for each date
+    const comparison = Object.keys(CSV_TRUTH).sort().map(date => {
+        const api = byDate[date] || 0;
+        const csv = CSV_TRUTH[date];
+        return { date, api, csv, diff: api - csv, pct_off: csv > 0 ? Math.round((api - csv) / csv * 100) + '%' : 'N/A' };
+    });
 
-    const [campData, adsetData] = await Promise.all([
-        getSubscribeStats('campaign', params),
-        getSubscribeStats('adset', params),
-    ]);
+    const totalApi = comparison.reduce((s, r) => s + r.api, 0);
+    const totalCsv = comparison.reduce((s, r) => s + r.csv, 0);
 
-    const campTotal = campData.reduce((s, r) => ({ v: s.v + r.value_field, c: s.c + r['7d_click'], i: s.i + r['1d_view'] }), { v: 0, c: 0, i: 0 });
-    const adsetTotal = adsetData.reduce((s, r) => ({ v: s.v + r.value_field, c: s.c + r['7d_click'], i: s.i + r['1d_view'] }), { v: 0, c: 0, i: 0 });
-
-    // Ads Manager CSV shows: report-sales-incr-daily-2 = 14 subscribes, membership-retargeting-incr-1 = 0
-    // So total = 14. We're checking which field/level matches that.
     res.status(200).json({
-        note: 'Ads Manager CSV shows 14 subscribes on 2026-03-10 for this account',
-        campaign_level: {
-            rows_with_subscribe: campData.length,
-            sum_value_field: campTotal.v,
-            sum_7d_click: campTotal.c,
-            sum_1d_view: campTotal.i,
-            detail: campData,
-        },
-        adset_level: {
-            rows_with_subscribe: adsetData.length,
-            sum_value_field: adsetTotal.v,
-            sum_7d_click: adsetTotal.c,
-            sum_1d_view: adsetTotal.i,
-        },
+        comparison,
+        totals: { api: totalApi, csv: totalCsv, diff: totalApi - totalCsv }
     });
 }
