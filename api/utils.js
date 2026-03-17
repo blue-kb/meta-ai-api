@@ -16,14 +16,7 @@ export async function fetchMetaInsights(level, fields, extraParams = {}) {
     const token = process.env.META_ACCESS_TOKEN;
     if (!actId || !token) throw new Error('Missing META_ACCOUNT_ID or META_ACCESS_TOKEN');
     const url = `https://graph.facebook.com/v19.0/act_${actId}/insights`;
-    const params = {
-        access_token: token,
-        level,
-        fields: fields.join(','),
-        time_increment: 1,
-        limit: 500,
-        ...extraParams
-    };
+    const params = { access_token: token, level, fields: fields.join(','), time_increment: 1, limit: 500, ...extraParams };
     if (!params.time_range && !params.date_preset) params.date_preset = 'yesterday';
     let allData = [];
     let currentUrl = url;
@@ -54,9 +47,7 @@ export function getTabName(levelPrefix, referenceDateStr) {
     return `${levelPrefix}_${year}-${month}`;
 }
 
-export function getDateString(date) {
-    return date.toISOString().split('T')[0];
-}
+export function getDateString(date) { return date.toISOString().split('T')[0]; }
 
 export function getYesterdayDateString() {
     const date = new Date();
@@ -64,13 +55,131 @@ export function getYesterdayDateString() {
     return getDateString(date);
 }
 
-/**
- * Upsert rows for one or more dates into a sheet tab, then sort all rows chronologically.
- * - Creates the tab if missing
- * - Always writes correct headers to row 1
- * - Removes existing rows for ALL dates in the new data (bulk dedup)
- * - Merges + sorts all rows by date ascending (earliest first)
- */
+// ─── Schema ───────────────────────────────────────────────────────────────────
+// Shared metric columns (59 columns) — same for all levels
+const COMMON_METRICS = [
+    // Delivery
+    'spend', 'impressions', 'reach', 'frequency', 'cpm', 'cpc', 'ctr',
+    'inline_link_click_ctr', 'inline_link_clicks', 'clicks',
+    'unique_clicks', 'unique_ctr', 'unique_inline_link_clicks', 'unique_inline_link_click_ctr',
+    'cpp', 'cost_per_inline_link_click', 'cost_per_unique_click', 'cost_per_unique_inline_link_click',
+    'social_spend', 'full_view_impressions', 'full_view_reach',
+    // Outbound
+    'outbound_clicks', 'outbound_clicks_ctr',
+    // Conversions (count)
+    'landing_page_view', 'add_to_cart', 'initiate_checkout', 'purchase', 'subscribe',
+    'video_view', 'thruplay', 'post_engagement', 'page_engagement',
+    'like', 'comment', 'share', 'post_reaction', 'post_save', 'leadgen',
+    'app_install', 'mobile_app_install', 'link_click_action',
+    // Conversion values
+    'purchase_value', 'subscribe_value',
+    // Cost per action
+    'cost_per_landing_page_view', 'cost_per_add_to_cart', 'cost_per_initiate_checkout',
+    'cost_per_purchase', 'cost_per_subscribe',
+    // Unique conversions
+    'unique_landing_page_view', 'unique_add_to_cart', 'unique_initiate_checkout',
+    'unique_purchase', 'unique_subscribe',
+    // ROAS
+    'purchase_roas', 'website_purchase_roas',
+    // Estimated
+    'estimated_ad_recallers', 'estimated_ad_recall_rate',
+    'estimated_ad_recall_rate_lower_bound', 'estimated_ad_recall_rate_upper_bound'
+];
+
+export const ACCOUNT_HEADERS = [
+    'date_start', 'date_stop', 'account_id', 'account_name',
+    ...COMMON_METRICS
+];
+
+export const CAMPAIGN_HEADERS = [
+    'date_start', 'date_stop', 'campaign_id', 'campaign_name', 'objective', 'buying_type',
+    ...COMMON_METRICS
+];
+
+export const ADSET_HEADERS = [
+    'date_start', 'date_stop', 'adset_id', 'adset_name', 'campaign_id', 'campaign_name',
+    'objective', 'buying_type', 'optimization_goal', 'bid_strategy',
+    'daily_budget', 'lifetime_budget', 'budget_remaining', 'start_time', 'end_time',
+    ...COMMON_METRICS
+];
+
+export const AD_HEADERS = [
+    'date_start', 'date_stop', 'ad_id', 'ad_name', 'adset_id', 'adset_name',
+    'campaign_id', 'campaign_name',
+    'quality_ranking', 'engagement_rate_ranking', 'conversion_rate_ranking',
+    ...COMMON_METRICS,
+    // Video
+    'video_play_actions', 'video_p25_watched_actions', 'video_p50_watched_actions',
+    'video_p75_watched_actions', 'video_p100_watched_actions',
+    'video_30_sec_watched_actions', 'video_thruplay_watched_actions',
+    'video_avg_time_watched_actions', 'video_continuous_2_sec_watched_actions',
+    // Canvas
+    'canvas_avg_view_time', 'canvas_avg_view_percent'
+];
+
+// Fields to request from Meta Insights API (common to all levels)
+export const COMMON_INSIGHT_FIELDS = [
+    'spend', 'impressions', 'reach', 'frequency', 'cpm', 'cpc', 'ctr',
+    'inline_link_click_ctr', 'inline_link_clicks', 'clicks',
+    'unique_clicks', 'unique_ctr', 'unique_inline_link_clicks', 'unique_inline_link_click_ctr',
+    'cpp', 'cost_per_inline_link_click', 'cost_per_unique_click', 'cost_per_unique_inline_link_click',
+    'social_spend', 'full_view_impressions', 'full_view_reach',
+    'outbound_clicks', 'outbound_clicks_ctr',
+    'actions', 'action_values', 'cost_per_action_type', 'unique_actions',
+    'purchase_roas', 'website_purchase_roas',
+    'estimated_ad_recallers', 'estimated_ad_recall_rate',
+    'estimated_ad_recall_rate_lower_bound', 'estimated_ad_recall_rate_upper_bound'
+];
+
+// Build the 59 shared metric columns from one insights row
+export function buildMetricsRow(data) {
+    const outboundClicks = parseMetaAction(data.outbound_clicks, 'link_click');
+    const outboundClicksCtr = parseMetaAction(data.outbound_clicks_ctr, 'link_click');
+    const cp = (type) => safeValue(data.cost_per_action_type?.find(a => a.action_type === type)?.value);
+    const act = (type) => parseMetaAction(data.actions, type);
+    const val = (type) => parseMetaAction(data.action_values, type);
+    const uniq = (type) => parseMetaAction(data.unique_actions, type);
+    return [
+        // Delivery
+        safeValue(data.spend), safeValue(data.impressions), safeValue(data.reach),
+        safeValue(data.frequency), safeValue(data.cpm), safeValue(data.cpc), safeValue(data.ctr),
+        safeValue(data.inline_link_click_ctr), safeValue(data.inline_link_clicks), safeValue(data.clicks),
+        safeValue(data.unique_clicks), safeValue(data.unique_ctr),
+        safeValue(data.unique_inline_link_clicks), safeValue(data.unique_inline_link_click_ctr),
+        safeValue(data.cpp), safeValue(data.cost_per_inline_link_click),
+        safeValue(data.cost_per_unique_click), safeValue(data.cost_per_unique_inline_link_click),
+        safeValue(data.social_spend), safeValue(data.full_view_impressions), safeValue(data.full_view_reach),
+        // Outbound
+        outboundClicks, outboundClicksCtr,
+        // Conversions (count)
+        act('landing_page_view'), act('add_to_cart'), act('initiate_checkout'),
+        act('purchase') || act('offsite_conversion.fb_pixel_purchase'),
+        act('subscribe'),
+        act('video_view'), act('thruplay'), act('post_engagement'), act('page_engagement'),
+        act('like'), act('comment'), act('share'), act('post_reaction'),
+        act('onsite_conversion.post_save'),
+        act('leadgen_grouped') || act('leadgen'),
+        act('app_install'), act('mobile_app_install'), act('link_click'),
+        // Conversion values
+        val('purchase') || val('offsite_conversion.fb_pixel_purchase'),
+        val('subscribe'),
+        // Cost per action
+        cp('landing_page_view'), cp('add_to_cart'), cp('initiate_checkout'),
+        cp('purchase') || cp('offsite_conversion.fb_pixel_purchase'), cp('subscribe'),
+        // Unique conversions
+        uniq('landing_page_view'), uniq('add_to_cart'), uniq('initiate_checkout'),
+        uniq('purchase') || uniq('offsite_conversion.fb_pixel_purchase'), uniq('subscribe'),
+        // ROAS
+        safeValue(data.purchase_roas?.[0]?.value),
+        safeValue(data.website_purchase_roas?.[0]?.value),
+        // Estimated
+        safeValue(data.estimated_ad_recallers), safeValue(data.estimated_ad_recall_rate),
+        safeValue(data.estimated_ad_recall_rate_lower_bound),
+        safeValue(data.estimated_ad_recall_rate_upper_bound),
+    ];
+}
+
+// ─── appendToSheet ────────────────────────────────────────────────────────────
 export async function appendToSheet(sheetsClient, tabName, headers, formatRowFunc, metaData) {
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
     if (!spreadsheetId) throw new Error('Missing GOOGLE_SHEET_ID');
@@ -84,10 +193,8 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
         return row;
     });
 
-    // Collect ALL unique dates being updated (for bulk dedup)
     const targetDates = new Set(newRows.map(row => String(row[0]).replace(/^'/, '')));
 
-    // Ensure tab exists
     const spreadsheet = await sheetsClient.spreadsheets.get({ spreadsheetId });
     const sheetExists = spreadsheet.data.sheets.some(s => s.properties.title === tabName);
     if (!sheetExists) {
@@ -97,27 +204,20 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
         });
     }
 
-    // Always write correct headers to row 1
     await sheetsClient.spreadsheets.values.update({
-        spreadsheetId,
-        range: `${tabName}!A1`,
-        valueInputOption: 'RAW',
+        spreadsheetId, range: `${tabName}!A1`, valueInputOption: 'RAW',
         requestBody: { values: [headers] }
     });
 
-    // Read all existing data rows (row 2 onwards)
     const existing = await sheetsClient.spreadsheets.values.get({
-        spreadsheetId,
-        range: `${tabName}!A2:ZZ`
+        spreadsheetId, range: `${tabName}!A2:ZZZ`
     });
 
-    // Remove rows matching ANY of the target dates (bulk dedup)
     const keepRows = (existing.data.values || []).filter(row => {
         const cellDate = String(row[0] || '').replace(/^'/, '');
         return !targetDates.has(cellDate);
     });
 
-    // Merge and sort ascending by date (earliest first)
     const allRows = [...keepRows, ...newRows];
     allRows.sort((a, b) => {
         const da = String(a[0] || '').replace(/^'/, '');
@@ -125,13 +225,10 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
         return da.localeCompare(db);
     });
 
-    // Clear data area and rewrite
-    await sheetsClient.spreadsheets.values.clear({ spreadsheetId, range: `${tabName}!A2:ZZ` });
+    await sheetsClient.spreadsheets.values.clear({ spreadsheetId, range: `${tabName}!A2:ZZZ` });
     if (allRows.length > 0) {
         await sheetsClient.spreadsheets.values.update({
-            spreadsheetId,
-            range: `${tabName}!A2`,
-            valueInputOption: 'USER_ENTERED',
+            spreadsheetId, range: `${tabName}!A2`, valueInputOption: 'USER_ENTERED',
             requestBody: { values: allRows }
         });
     }
@@ -141,11 +238,9 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
 export async function wipeAndResetHeaders(sheetsClient, tabName, headers) {
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
     if (!spreadsheetId) throw new Error('Missing GOOGLE_SHEET_ID');
-    await sheetsClient.spreadsheets.values.clear({ spreadsheetId, range: `${tabName}!A:Z` });
+    await sheetsClient.spreadsheets.values.clear({ spreadsheetId, range: `${tabName}!A:ZZZ` });
     await sheetsClient.spreadsheets.values.update({
-        spreadsheetId,
-        range: `${tabName}!A1`,
-        valueInputOption: 'RAW',
+        spreadsheetId, range: `${tabName}!A1`, valueInputOption: 'RAW',
         requestBody: { values: [headers] }
     });
     return true;
