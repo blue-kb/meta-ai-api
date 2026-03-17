@@ -1,7 +1,6 @@
-import { getSheetsClient, fetchMetaInsights, getTabName, getYesterdayDateString, appendToSheet, parseMetaAction, safeDivide, safeValue } from '../utils.js';
+import { getSheetsClient, fetchMetaInsights, getTabName, getYesterdayDateString, appendToSheet, parseMetaAction, safeValue } from '../utils.js';
 
 export default async function handler(req, res) {
-    // Security check
     const apiKey = req.headers['x-api-key'];
     if (apiKey !== process.env.AI_AGENT_API_KEY) {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -9,23 +8,34 @@ export default async function handler(req, res) {
 
     try {
         const sheetsClient = await getSheetsClient();
-
         const fields = [
             'campaign_id', 'campaign_name', 'spend', 'impressions', 'reach', 'clicks',
             'inline_link_clicks', 'inline_link_click_ctr', 'cpm', 'cpc', 'frequency',
-            'actions', 'action_values'
+            'actions', 'action_values', 'purchase_roas', 'cost_per_action_type'
         ];
 
-        const dateOverride = req.query.date; // YYYY-MM-DD
-        const targetDate = dateOverride || getYesterdayDateString();
+        let startDate, endDate;
+        if (req.query.start && req.query.end) {
+            startDate = req.query.start;
+            endDate = req.query.end;
+        } else {
+            const d = req.query.date || getYesterdayDateString();
+            startDate = endDate = d;
+        }
 
-        // Fetch campaign level data
         const insights = await fetchMetaInsights('campaign', fields, {
-            time_range: JSON.stringify({ 'since': targetDate, 'until': targetDate })
+            time_range: JSON.stringify({ since: startDate, until: endDate })
         });
 
+        const headers = [
+            'date', 'campaign_id', 'campaign_name', 'spend', 'impressions', 'reach', 'clicks',
+            'inline_link_clicks', 'inline_link_click_ctr', 'cpm', 'cpc', 'frequency',
+            'purchase', 'purchase_value', 'purchase_roas', 'cost_per_purchase',
+            'subscribe', 'cost_per_subscribe', 'subscribe_value',
+            'add_to_cart', 'initiate_checkout', 'video_view', 'thruplay'
+        ];
+
         const formatRow = (data) => {
-            const spend = parseFloat(data.spend) || 0;
             const purchases = parseMetaAction(data.actions, 'purchase') || parseMetaAction(data.actions, 'offsite_conversion.fb_pixel_purchase');
             const purchaseValue = parseMetaAction(data.action_values, 'purchase') || parseMetaAction(data.action_values, 'offsite_conversion.fb_pixel_purchase');
             const subscribes = parseMetaAction(data.actions, 'subscribe');
@@ -34,45 +44,46 @@ export default async function handler(req, res) {
             const initiateCheckout = parseMetaAction(data.actions, 'initiate_checkout');
             const v3s = parseMetaAction(data.actions, 'video_view');
             const thruplay = parseMetaAction(data.actions, 'thruplay');
-
             return [
-                targetDate, // A: date (YYYY-MM-DD)
-                safeValue(data.campaign_id, ''), // B: campaign_id
-                safeValue(data.campaign_name, ''), // C: campaign_name
-                safeValue(data.spend), // D: spend
-                safeValue(data.impressions), // E: impressions
-                safeValue(data.reach), // F: reach
-                safeValue(data.clicks), // G: clicks
-                safeValue(data.inline_link_clicks), // H: link_clicks
-                safeValue(data.inline_link_click_ctr), // I: ctr
-                safeValue(data.cpm), // J: cpm
-                safeValue(data.cpc), // K: cpc
-                safeValue(data.frequency), // L: frequency
-                purchases, // M: purchases
-                purchaseValue, // N: purchase_value
-                safeValue(data.purchase_roas?.[0]?.value), // O: purchase_roas
-                safeValue(data.cost_per_purchase?.[0]?.value), // P: cost_per_purchase
-                subscribes, // Q: subscribes
-                safeValue(data.cost_per_action_type?.find(a => a.action_type === 'subscribe')?.value), // R: cost_per_subscribe
-                subscribeValue, // S: subscribe_value
-                addToCart, // T: add_to_cart
-                initiateCheckout, // U: initiate_checkout
-                v3s, // V: video_views_3s
-                thruplay // W: video_views_thruplay
+                data.date_start,
+                safeValue(data.campaign_id, ''),
+                safeValue(data.campaign_name, ''),
+                safeValue(data.spend),
+                safeValue(data.impressions),
+                safeValue(data.reach),
+                safeValue(data.clicks),
+                safeValue(data.inline_link_clicks),
+                safeValue(data.inline_link_click_ctr),
+                safeValue(data.cpm),
+                safeValue(data.cpc),
+                safeValue(data.frequency),
+                purchases,
+                purchaseValue,
+                safeValue(data.purchase_roas?.[0]?.value),
+                safeValue(data.cost_per_action_type?.find(a => a.action_type === 'purchase')?.value),
+                subscribes,
+                safeValue(data.cost_per_action_type?.find(a => a.action_type === 'subscribe')?.value),
+                subscribeValue,
+                addToCart,
+                initiateCheckout,
+                v3s,
+                thruplay
             ];
         };
 
-        const tabName = getTabName('Campaigns', targetDate);
-        const headers = [
-            'Date', 'Campaign ID', 'Campaign Name', 'Spend', 'Impressions', 'Reach', 'Clicks', 'Link Clicks',
-            'CTR (%)', 'CPM', 'CPC', 'Frequency', 'Purchases', 'Purchase Value', 'Purchase ROAS',
-            'Cost per Purchase', 'Subscribes', 'Cost per Subscribe', 'Subscribe Value',
-            'Add to Cart', 'Initiate Checkout', 'Video Views 3s', 'Video Views Thruplay'
-        ];
+        const byTab = {};
+        for (const row of insights) {
+            const tabName = getTabName('Campaigns', row.date_start);
+            if (!byTab[tabName]) byTab[tabName] = [];
+            byTab[tabName].push(row);
+        }
 
-        const added = await appendToSheet(sheetsClient, tabName, headers, formatRow, insights);
+        let totalAdded = 0;
+        for (const [tabName, rows] of Object.entries(byTab)) {
+            totalAdded += await appendToSheet(sheetsClient, tabName, headers, formatRow, rows);
+        }
 
-        return res.status(200).json({ status: 'ok', level: 'campaigns', rows_added: added });
+        return res.status(200).json({ status: 'ok', level: 'campaigns', rows_added: totalAdded });
     } catch (error) {
         console.error('Campaigns sync error:', error);
         return res.status(500).json({ error: error.message || 'Internal Server Error' });
