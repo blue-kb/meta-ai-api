@@ -3,12 +3,16 @@ export default async function handler(req, res) {
     const mode = req.query.mode || '7days';
     const baseUrl = 'https://meta-ai-api-ecru.vercel.app';
     const levels = ['account', 'campaigns', 'adsets', 'ads'];
+    const shouldReset = req.query.reset === 'true';
 
     const now = new Date();
     let startParam, endParam;
 
     if (mode === 'today') {
         startParam = endParam = now.toISOString().split('T')[0];
+    } else if (mode === 'custom' && req.query.start && req.query.end) {
+        startParam = req.query.start;
+        endParam = req.query.end;
     } else {
         const end = new Date(now);
         end.setUTCDate(end.getUTCDate() - 1);
@@ -16,6 +20,18 @@ export default async function handler(req, res) {
         start.setUTCDate(start.getUTCDate() - 7);
         startParam = start.toISOString().split('T')[0];
         endParam = end.toISOString().split('T')[0];
+    }
+
+    // Wipe all sheet tabs if reset=true
+    if (shouldReset) {
+        try {
+            await fetch(`${baseUrl}/api/reset-sheets`, {
+                method: 'POST',
+                headers: { 'x-api-key': process.env.AI_AGENT_API_KEY }
+            });
+        } catch (err) {
+            console.error('Reset sheets error:', err.message);
+        }
     }
 
     // Build dates array for frontend display
