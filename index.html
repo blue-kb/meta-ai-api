@@ -11,6 +11,43 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700&display=swap"
         rel="stylesheet">
+    <style>
+        .refresh-section {
+            margin: 2rem 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        .refresh-buttons {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .refresh-btn {
+            padding: 0.65rem 1.25rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        .refresh-btn:hover { opacity: 0.85; }
+        .refresh-btn:active { transform: scale(0.97); }
+        .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-7days { background: #1877f2; color: #fff; }
+        .btn-today { background: #f0f2f5; color: #1c1e21; border: 1px solid #ddd; }
+        .refresh-status {
+            font-size: 0.825rem;
+            padding: 0.5rem 0.9rem;
+            border-radius: 6px;
+            display: none;
+        }
+        .refresh-status.running { display: block; background: #fff8e1; color: #856404; }
+        .refresh-status.success { display: block; background: #e6f4ea; color: #1e7e34; }
+        .refresh-status.error   { display: block; background: #fdecea; color: #c0392b; }
+    </style>
 </head>
 
 <body class="light-theme">
@@ -40,11 +77,23 @@
         <header class="hero">
             <h1>Precision <span class="highlight">Data Pipeline</span></h1>
             <p>High-fidelity Meta Ads insights harvesting engine with Google Sheets persistence layer.</p>
+
+            <div class="refresh-section">
+                <div class="refresh-buttons">
+                    <button class="refresh-btn btn-7days" onclick="triggerRefresh('7days')">
+                        &#x21bb; Refresh Data Set &mdash; Last 7 Days
+                    </button>
+                    <button class="refresh-btn btn-today" onclick="triggerRefresh('today')">
+                        &#x21bb; Refresh Data Set &mdash; Today
+                    </button>
+                </div>
+                <div class="refresh-status" id="refresh-status"></div>
+            </div>
         </header>
 
         <section class="overview-grid">
             <div class="panel">
-                <div class="panel-icon">⚙️</div>
+                <div class="panel-icon">&#x2699;&#xfe0f;</div>
                 <h3>Staggered Cycles</h3>
                 <p>Distributed cron execution across 4 parallel stages to ensure 100% reliability within cloud
                     constraints.</p>
@@ -57,7 +106,7 @@
             </div>
 
             <div class="panel">
-                <div class="panel-icon">📊</div>
+                <div class="panel-icon">&#x1f4ca;</div>
                 <h3>Sheets Persistence</h3>
                 <p>Automated monthly archiving into structured Google Sheets, providing a reliable historical truth for
                     AI analysis.</p>
@@ -68,7 +117,7 @@
             </div>
 
             <div class="panel highlight-panel">
-                <div class="panel-icon">🧠</div>
+                <div class="panel-icon">&#x1f9e0;</div>
                 <h3>AI Integrated</h3>
                 <p>Designed for native strategic analysis. Delivers raw, structured data points directly to Large
                     Language Models.</p>
@@ -80,6 +129,35 @@
             <p>&copy; 2026 Meta AI Hub &bull; Strategic Marketing Infrastructure</p>
         </footer>
     </main>
+
+    <script>
+        async function triggerRefresh(mode) {
+            const status = document.getElementById('refresh-status');
+            const buttons = document.querySelectorAll('.refresh-btn');
+            buttons.forEach(b => b.disabled = true);
+            status.className = 'refresh-status running';
+            status.textContent = mode === '7days'
+                ? 'Syncing last 7 days across all levels... this may take ~30 seconds.'
+                : 'Syncing today\'s data across all levels...';
+
+            try {
+                const res = await fetch('/api/refresh?mode=' + mode);
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    status.className = 'refresh-status success';
+                    status.textContent = 'Done! ' + data.total_syncs + ' syncs completed for: ' + data.dates_synced.join(', ');
+                } else {
+                    status.className = 'refresh-status error';
+                    status.textContent = 'Partial success (' + data.errors + ' errors). Check Vercel logs for details.';
+                }
+            } catch (err) {
+                status.className = 'refresh-status error';
+                status.textContent = 'Request failed: ' + err.message;
+            } finally {
+                buttons.forEach(b => b.disabled = false);
+            }
+        }
+    </script>
 </body>
 
 </html>
