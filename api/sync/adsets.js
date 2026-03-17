@@ -8,13 +8,13 @@ export default async function handler(req, res) {
 
     try {
         const sheetsClient = await getSheetsClient();
+        // Note: bid_strategy, daily_budget, lifetime_budget, budget_remaining,
+        // start_time, end_time are Ad Set object properties — not available via Insights API.
+        // optimization_goal and buying_type are insight-level attributes.
         const fields = [
             ...COMMON_INSIGHT_FIELDS,
             'adset_id', 'adset_name', 'campaign_id', 'campaign_name',
-            'objective', 'buying_type',
-            'optimization_goal', 'bid_strategy',
-            'daily_budget', 'lifetime_budget', 'budget_remaining',
-            'start_time', 'end_time'
+            'objective', 'buying_type', 'optimization_goal'
         ];
 
         let startDate, endDate;
@@ -40,12 +40,12 @@ export default async function handler(req, res) {
             safeValue(data.objective, ''),
             safeValue(data.buying_type, ''),
             safeValue(data.optimization_goal, ''),
-            safeValue(data.bid_strategy, ''),
-            safeValue(data.daily_budget, ''),
-            safeValue(data.lifetime_budget, ''),
-            safeValue(data.budget_remaining, ''),
-            safeValue(data.start_time, ''),
-            safeValue(data.end_time, ''),
+            '',  // bid_strategy — not in Insights API
+            '',  // daily_budget — not in Insights API
+            '',  // lifetime_budget — not in Insights API
+            '',  // budget_remaining — not in Insights API
+            '',  // start_time — not in Insights API
+            '',  // end_time — not in Insights API
             ...buildMetricsRow(data)
         ];
 
