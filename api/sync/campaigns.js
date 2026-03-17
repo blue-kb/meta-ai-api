@@ -33,21 +33,27 @@ export default async function handler(req, res) {
             ...buildMetricsRow(data)
         ];
 
-        const byTab = {};
+        // Group raw rows by month tab
+        const tabGroups = {};
         for (const row of insights) {
-            const tabName = getTabName('Campaigns', row.date_start);
-            if (!byTab[tabName]) byTab[tabName] = [];
-            byTab[tabName].push(row);
+            const tab = getTabName('Campaigns', row.date_start);
+            if (!tabGroups[tab]) tabGroups[tab] = [];
+            tabGroups[tab].push(row);
         }
 
         let totalAdded = 0;
-        for (const [tabName, rows] of Object.entries(byTab)) {
-            totalAdded += await appendToSheet(sheetsClient, tabName, CAMPAIGN_HEADERS, formatRow, rows);
+        for (const [tab, rows] of Object.entries(tabGroups)) {
+            totalAdded += await appendToSheet(sheetsClient, tab, CAMPAIGN_HEADERS, formatRow, rows);
         }
 
-        return res.status(200).json({ status: 'ok', level: 'campaigns', rows_added: totalAdded });
-    } catch (error) {
-        console.error('Campaigns sync error:', error);
-        return res.status(500).json({ error: error.message || 'Internal Server Error' });
+        return res.status(200).json({
+            status: 'success',
+            date_range: { start: startDate, end: endDate },
+            tabs_updated: Object.keys(tabGroups).length,
+            rows_added: totalAdded
+        });
+    } catch (err) {
+        console.error('campaigns sync error:', err);
+        return res.status(500).json({ error: err.message });
     }
 }
