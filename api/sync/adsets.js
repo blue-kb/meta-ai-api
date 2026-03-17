@@ -1,4 +1,4 @@
-import { getSheetsClient, fetchMetaInsights, getTabName, getYesterdayDateString, appendToSheet, parseMetaAction, safeValue } from '../utils.js';
+import { getSheetsClient, fetchMetaInsights, getTabName, getYesterdayDateString, appendToSheet, ADSET_HEADERS, COMMON_INSIGHT_FIELDS, buildMetricsRow, safeValue } from '../utils.js';
 
 export default async function handler(req, res) {
     const apiKey = req.headers['x-api-key'];
@@ -9,10 +9,12 @@ export default async function handler(req, res) {
     try {
         const sheetsClient = await getSheetsClient();
         const fields = [
+            ...COMMON_INSIGHT_FIELDS,
             'adset_id', 'adset_name', 'campaign_id', 'campaign_name',
-            'spend', 'impressions', 'reach', 'clicks', 'inline_link_clicks',
-            'inline_link_click_ctr', 'cpm', 'cpc', 'frequency',
-            'actions', 'action_values', 'purchase_roas', 'cost_per_action_type'
+            'objective', 'buying_type',
+            'optimization_goal', 'bid_strategy',
+            'daily_budget', 'lifetime_budget', 'budget_remaining',
+            'start_time', 'end_time'
         ];
 
         let startDate, endDate;
@@ -28,68 +30,56 @@ export default async function handler(req, res) {
             time_range: JSON.stringify({ since: startDate, until: endDate })
         });
 
-        const headers = [
-            'date', 'adset_id', 'adset_name', 'campaign_id', 'campaign_name',
-            'spend', 'impressions', 'reach', 'clicks', 'inline_link_clicks',
-            'inline_link_click_ctr', 'cpm', 'cpc', 'frequency',
-            'purchase', 'purchase_value', 'purchase_roas', 'cost_per_purchase',
-            'subscribe', 'cost_per_subscribe', 'subscribe_value',
-            'add_to_cart', 'initiate_checkout', 'video_view', 'thruplay'
+        const formatRow = (data) => [
+            data.date_start,
+            data.date_stop,
+            safeValue(data.adset_id, ''),
+            safeValue(data.adset_name, ''),
+            safeValue(data.campaign_id, ''),
+            safeValue(data.campaign_name, ''),
+            safeValue(data.objective, ''),
+            safeValue(data.buying_type, ''),
+            safeValue(data.optimization_goal, ''),
+            safeValue(data.bid_strategy, ''),
+            safeValue(data.daily_budget, ''),
+            safeValue(data.lifetime_budget, ''),
+            safeValue(data.budget_remaining, ''),
+            safeValue(data.start_time, ''),
+            safeValue(data.end_time, ''),
+            ...buildMetricsRow(data)
         ];
 
-        const formatRow = (data) => {
-            const purchases = parseMetaAction(data.actions, 'purchase') || parseMetaAction(data.actions, 'offsite_conversion.fb_pixel_purchase');
-            const purchaseValue = parseMetaAction(data.action_values, 'purchase') || parseMetaAction(data.action_values, 'offsite_conversion.fb_pixel_purchase');
-            const subscribes = parseMetaAction(data.actions, 'subscribe');
-            const subscribeValue = parseMetaAction(data.action_values, 'subscribe');
-            const addToCart = parseMetaAction(data.actions, 'add_to_cart');
-            const initiateCheckout = parseMetaAction(data.actions, 'initiate_checkout');
-            const v3s = parseMetaAction(data.actions, 'video_view');
-            const thruplay = parseMetaAction(data.actions, 'thruplay');
-            return [
-                data.date_start,
-                safeValue(data.adset_id, ''),
-                safeValue(data.adset_name, ''),
-                safeValue(data.campaign_id, ''),
-                safeValue(data.campaign_name, ''),
-                safeValue(data.spend),
-                safeValue(data.impressions),
-                safeValue(data.reach),
-                safeValue(data.clicks),
-                safeValue(data.inline_link_clicks),
-                safeValue(data.inline_link_click_ctr),
-                safeValue(data.cpm),
-                safeValue(data.cpc),
-                safeValue(data.frequency),
-                purchases,
-                purchaseValue,
-                safeValue(data.purchase_roas?.[0]?.value),
-                safeValue(data.cost_per_action_type?.find(a => a.action_type === 'purchase')?.value),
-                subscribes,
-                safeValue(data.cost_per_action_type?.find(a => a.action_type === 'subscribe')?.value),
-                subscribeValue,
-                addToCart,
-                initiateCheckout,
-                v3s,
-                thruplay
-            ];
-        };
-
-        const byTab = {};
+        // Group rows by month tab
+        const tabGroups = {};
         for (const row of insights) {
-            const tabName = getTabName('AdSets', row.date_start);
-            if (!byTab[tabName]) byTab[tabName] = [];
-            byTab[tabName].push(row);
+            const tab = getTabName('AdSets', row.date_start);
+            if (!tabGroups[tab]) tabGroups[tab] = [];
+            tabGroups[tab].push(formatRow(row));
         }
 
-        let totalAdded = 0;
-        for (const [tabName, rows] of Object.entries(byTab)) {
-            totalAdded += await appendToSheet(sheetsClient, tabName, headers, formatRow, rows);
+        // Collect all target dates for dedup
+        const targetDates = new Set();
+        const d = new Date(startDate);
+        const end = new Date(endDate);
+        while (d <= end) {
+            targetDates.add(d.toISOString().slice(0, 10));
+            d.setDate(d.getDate() + 1);
         }
 
-        return res.status(200).json({ status: 'ok', level: 'adsets', rows_added: totalAdded });
-    } catch (error) {
-        console.error('AdSets sync error:', error);
-        return res.status(500).json({ error: error.message || 'Internal Server Error' });
+        const results = [];
+        for (const [tab, rows] of Object.entries(tabGroups)) {
+            const result = await appendToSheet(sheetsClient, tab, rows, ADSET_HEADERS, targetDates);
+            results.push({ tab, rows_written: rows.length, ...result });
+        }
+
+        return res.status(200).json({
+            status: 'success',
+            date_range: { start: startDate, end: endDate },
+            tabs_updated: results.length,
+            results
+        });
+    } catch (err) {
+        console.error('adsets sync error:', err);
+        return res.status(500).json({ error: err.message });
     }
 }
