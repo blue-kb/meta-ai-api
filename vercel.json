@@ -1,20 +1,8 @@
 {
-    "crons": [
-        {
-            "path": "/api/sync/account",
-            "schedule": "0 1 * * *"
-        },
-        {
-            "path": "/api/sync/campaigns",
-            "schedule": "15 1 * * *"
-        },
-        {
-            "path": "/api/sync/adsets",
-            "schedule": "30 1 * * *"
-        },
-        {
-            "path": "/api/sync/ads",
-            "schedule": "45 1 * * *"
-        }
-    ]
+        "crons": [
+                    {
+                                    "path": "/api/cron/daily-sync",
+                                    "schedule": "5 15 * * *"
+                    }
+        ]
 }
