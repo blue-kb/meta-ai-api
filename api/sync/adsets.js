@@ -49,34 +49,24 @@ export default async function handler(req, res) {
             ...buildMetricsRow(data)
         ];
 
-        // Group rows by month tab
+        // Group raw rows by month tab
         const tabGroups = {};
         for (const row of insights) {
             const tab = getTabName('AdSets', row.date_start);
             if (!tabGroups[tab]) tabGroups[tab] = [];
-            tabGroups[tab].push(formatRow(row));
+            tabGroups[tab].push(row);
         }
 
-        // Collect all target dates for dedup
-        const targetDates = new Set();
-        const d = new Date(startDate);
-        const end = new Date(endDate);
-        while (d <= end) {
-            targetDates.add(d.toISOString().slice(0, 10));
-            d.setDate(d.getDate() + 1);
-        }
-
-        const results = [];
+        let totalAdded = 0;
         for (const [tab, rows] of Object.entries(tabGroups)) {
-            const result = await appendToSheet(sheetsClient, tab, rows, ADSET_HEADERS, targetDates);
-            results.push({ tab, rows_written: rows.length, ...result });
+            totalAdded += await appendToSheet(sheetsClient, tab, ADSET_HEADERS, formatRow, rows);
         }
 
         return res.status(200).json({
             status: 'success',
             date_range: { start: startDate, end: endDate },
-            tabs_updated: results.length,
-            results
+            tabs_updated: Object.keys(tabGroups).length,
+            rows_added: totalAdded
         });
     } catch (err) {
         console.error('adsets sync error:', err);
