@@ -204,7 +204,27 @@ export function buildMetricsRow(data) {
     ];
 }
 
-// ─── appendToSheet ──────────────────────────────────────────────────────────── 
+// ─── Tab ordering helpers ────────────────────────────────────────────────────
+const LEVEL_ORDER = { 'Account': 0, 'Campaigns': 1, 'AdSets': 2, 'Ads': 3 };
+
+function parseTabName(title) {
+    const m = title.match(/^(Account|Campaigns|AdSets|Ads)_(\d{4})-(\d{2})$/);
+    return m ? { level: m[1], year: parseInt(m[2]), month: parseInt(m[3]) } : null;
+}
+
+function tabScore(title) {
+    const p = parseTabName(title);
+    if (!p) return -Infinity;
+    return p.year * 10000 + p.month * 10 - (LEVEL_ORDER[p.level] ?? 9);
+}
+
+// Returns the index a new tab should be inserted at (newest-first order)
+function getInsertIndex(existingSheets, newTabName) {
+    const newScore = tabScore(newTabName);
+    return existingSheets.filter(s => tabScore(s.properties.title) > newScore).length;
+}
+
+// ─── appendToSheet ────────────────────────────────────────────────────────────
 export async function appendToSheet(sheetsClient, tabName, headers, formatRowFunc, metaData) {
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
     if (!spreadsheetId) throw new Error('Missing GOOGLE_SHEET_ID');
@@ -220,9 +240,10 @@ export async function appendToSheet(sheetsClient, tabName, headers, formatRowFun
     const spreadsheet = await sheetsClient.spreadsheets.get({ spreadsheetId });
     const sheetExists = spreadsheet.data.sheets.some(s => s.properties.title === tabName);
     if (!sheetExists) {
+        const insertIndex = getInsertIndex(spreadsheet.data.sheets, tabName);
         await sheetsClient.spreadsheets.batchUpdate({
             spreadsheetId,
-            requestBody: { requests: [{ addSheet: { properties: { title: tabName } } }] }
+            requestBody: { requests: [{ addSheet: { properties: { title: tabName, index: insertIndex } } }] }
         });
     }
     await sheetsClient.spreadsheets.values.update({

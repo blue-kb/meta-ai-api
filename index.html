@@ -396,12 +396,13 @@
             { id: 'ms-ads',       itemsId: 'items-ads',       prefix: 'Ads' },
         ];
 
-        // Generate last 12 months as YYYY-MM strings
-        function getLast12Months() {
+        // Generate months from Nov 2025 to current month (newest first)
+        function getAvailableMonths() {
             const months = [];
+            const start = new Date(2025, 10, 1); // November 2025
             const now = new Date();
-            for (let i = 0; i < 12; i++) {
-                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const current = new Date(now.getFullYear(), now.getMonth(), 1);
+            for (let d = current; d >= start; d.setMonth(d.getMonth() - 1)) {
                 const yyyy = d.getFullYear();
                 const mm = String(d.getMonth() + 1).padStart(2, '0');
                 months.push(`${yyyy}-${mm}`);
@@ -410,7 +411,7 @@
         }
 
         function buildDropdowns() {
-            const months = getLast12Months();
+            const months = getAvailableMonths();
             CATEGORIES.forEach(({ itemsId, prefix }) => {
                 const container = document.getElementById(itemsId);
                 container.innerHTML = '';
