@@ -2,7 +2,8 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     const mode = req.query.mode || '7days';
     const baseUrl = 'https://meta-ai-api-ecru.vercel.app';
-    const levels = ['account', 'campaigns', 'adsets', 'ads'];
+    const allLevels = ['account', 'campaigns', 'adsets', 'ads'];
+    const levels = req.query.level ? [req.query.level] : allLevels;
     const shouldReset = req.query.reset === 'true';
 
     const now = new Date();
