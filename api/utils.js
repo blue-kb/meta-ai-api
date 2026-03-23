@@ -41,6 +41,36 @@ export async function fetchMetaInsights(level, fields, extraParams = {}) {
     return allData;
 }
 
+// Fetches id→effective_status map from the object endpoint (not Insights API)
+export async function fetchEffectiveStatuses(objectLevel) {
+    const actId = process.env.META_ACCOUNT_ID;
+    const token = process.env.META_ACCESS_TOKEN;
+    const endpointMap = { campaign: 'campaigns', adset: 'adsets', ad: 'ads' };
+    const endpoint = endpointMap[objectLevel];
+    if (!endpoint) throw new Error(`Unknown level: ${objectLevel}`);
+
+    const statusMap = new Map();
+    let currentUrl = `https://graph.facebook.com/v19.0/act_${actId}/${endpoint}?` +
+        new URLSearchParams({
+            access_token: token,
+            fields: 'id,effective_status',
+            // Include all statuses so deleted/archived objects are returned too
+            effective_status: JSON.stringify(['ACTIVE','PAUSED','DELETED','ARCHIVED','WITH_ISSUES','IN_PROCESS','CAMPAIGN_PAUSED','ADSET_PAUSED']),
+            limit: 500
+        });
+
+    while (currentUrl) {
+        const response = await fetch(currentUrl);
+        const data = await response.json();
+        if (!response.ok) break; // non-fatal — return partial map
+        for (const item of (data.data || [])) {
+            statusMap.set(item.id, item.effective_status);
+        }
+        currentUrl = data.paging?.next || null;
+    }
+    return statusMap;
+}
+
 export function safeDivide(numerator, denominator) {
     return denominator > 0 ? (numerator / denominator) : 0;
 }

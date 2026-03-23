@@ -1,4 +1,4 @@
-import { getSheetsClient, fetchMetaInsights, getTabName, getYesterdayDateString, appendToSheet, ADSET_HEADERS, COMMON_INSIGHT_FIELDS, buildMetricsRow, safeValue } from '../utils.js';
+import { getSheetsClient, fetchMetaInsights, fetchEffectiveStatuses, getTabName, getYesterdayDateString, appendToSheet, ADSET_HEADERS, COMMON_INSIGHT_FIELDS, buildMetricsRow, safeValue } from '../utils.js';
 
 export default async function handler(req, res) {
     const apiKey = req.headers['x-api-key'];
@@ -13,7 +13,7 @@ export default async function handler(req, res) {
         // optimization_goal and buying_type are insight-level attributes.
         const fields = [
             ...COMMON_INSIGHT_FIELDS,
-            'adset_id', 'adset_name', 'effective_status', 'campaign_id', 'campaign_name',
+            'adset_id', 'adset_name', 'campaign_id', 'campaign_name',
             'objective', 'buying_type', 'optimization_goal'
         ];
 
@@ -26,16 +26,19 @@ export default async function handler(req, res) {
             startDate = endDate = d;
         }
 
-        const insights = await fetchMetaInsights('adset', fields, {
-            time_range: JSON.stringify({ since: startDate, until: endDate })
-        });
+        const [insights, statusMap] = await Promise.all([
+            fetchMetaInsights('adset', fields, {
+                time_range: JSON.stringify({ since: startDate, until: endDate })
+            }),
+            fetchEffectiveStatuses('adset')
+        ]);
 
         const formatRow = (data) => [
             data.date_start,
             data.date_stop,
             safeValue(data.adset_id, ''),
             safeValue(data.adset_name, ''),
-            safeValue(data.effective_status, ''),
+            statusMap.get(data.adset_id) || '',
             safeValue(data.campaign_id, ''),
             safeValue(data.campaign_name, ''),
             safeValue(data.objective, ''),
