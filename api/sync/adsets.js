@@ -1,4 +1,4 @@
-import { getSheetsClient, fetchMetaInsights, fetchEffectiveStatuses, getTabName, getYesterdayDateString, appendToSheet, ADSET_HEADERS, COMMON_INSIGHT_FIELDS, buildMetricsRow, safeValue } from '../utils.js';
+import { getSheetsClient, fetchMetaInsights, fetchEffectiveStatuses, mapDelivery, getTabName, getYesterdayDateString, appendToSheet, ADSET_HEADERS, COMMON_INSIGHT_FIELDS, buildMetricsRow, safeValue } from '../utils.js';
 
 export default async function handler(req, res) {
     const apiKey = req.headers['x-api-key'];
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
             data.date_stop,
             safeValue(data.adset_id, ''),
             safeValue(data.adset_name, ''),
-            statusMap.get(data.adset_id) || '',
+            mapDelivery(statusMap.get(data.adset_id)),
             safeValue(data.campaign_id, ''),
             safeValue(data.campaign_name, ''),
             safeValue(data.objective, ''),
