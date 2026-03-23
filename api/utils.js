@@ -97,19 +97,19 @@ export const ACCOUNT_HEADERS = [
 ];
 
 export const CAMPAIGN_HEADERS = [
-    'date_start', 'date_stop', 'campaign_id', 'campaign_name', 'objective', 'buying_type',
+    'date_start', 'date_stop', 'campaign_id', 'campaign_name', 'effective_status', 'objective', 'buying_type',
     ...COMMON_METRICS
 ];
 
 export const ADSET_HEADERS = [
-    'date_start', 'date_stop', 'adset_id', 'adset_name', 'campaign_id', 'campaign_name',
+    'date_start', 'date_stop', 'adset_id', 'adset_name', 'effective_status', 'campaign_id', 'campaign_name',
     'objective', 'buying_type', 'optimization_goal', 'bid_strategy',
     'daily_budget', 'lifetime_budget', 'budget_remaining', 'start_time', 'end_time',
     ...COMMON_METRICS
 ];
 
 export const AD_HEADERS = [
-    'date_start', 'date_stop', 'ad_id', 'ad_name', 'adset_id', 'adset_name',
+    'date_start', 'date_stop', 'ad_id', 'ad_name', 'effective_status', 'adset_id', 'adset_name',
     'campaign_id', 'campaign_name',
     'quality_ranking', 'engagement_rate_ranking', 'conversion_rate_ranking',
     ...COMMON_METRICS,

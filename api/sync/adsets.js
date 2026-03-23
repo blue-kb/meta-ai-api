@@ -13,7 +13,7 @@ export default async function handler(req, res) {
         // optimization_goal and buying_type are insight-level attributes.
         const fields = [
             ...COMMON_INSIGHT_FIELDS,
-            'adset_id', 'adset_name', 'campaign_id', 'campaign_name',
+            'adset_id', 'adset_name', 'effective_status', 'campaign_id', 'campaign_name',
             'objective', 'buying_type', 'optimization_goal'
         ];
 
@@ -35,6 +35,7 @@ export default async function handler(req, res) {
             data.date_stop,
             safeValue(data.adset_id, ''),
             safeValue(data.adset_name, ''),
+            safeValue(data.effective_status, ''),
             safeValue(data.campaign_id, ''),
             safeValue(data.campaign_name, ''),
             safeValue(data.objective, ''),

@@ -8,7 +8,7 @@ export default async function handler(req, res) {
 
     try {
         const sheetsClient = await getSheetsClient();
-        const fields = [...COMMON_INSIGHT_FIELDS, 'campaign_id', 'campaign_name', 'objective', 'buying_type'];
+        const fields = [...COMMON_INSIGHT_FIELDS, 'campaign_id', 'campaign_name', 'effective_status', 'objective', 'buying_type'];
 
         let startDate, endDate;
         if (req.query.start && req.query.end) {
@@ -28,6 +28,7 @@ export default async function handler(req, res) {
             data.date_stop,
             safeValue(data.campaign_id, ''),
             safeValue(data.campaign_name, ''),
+            safeValue(data.effective_status, ''),
             safeValue(data.objective, ''),
             safeValue(data.buying_type, ''),
             ...buildMetricsRow(data)

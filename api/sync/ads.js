@@ -10,7 +10,7 @@ export default async function handler(req, res) {
         const sheetsClient = await getSheetsClient();
         const fields = [
             ...COMMON_INSIGHT_FIELDS,
-            'ad_id', 'ad_name', 'adset_id', 'adset_name', 'campaign_id', 'campaign_name',
+            'ad_id', 'ad_name', 'effective_status', 'adset_id', 'adset_name', 'campaign_id', 'campaign_name',
             'quality_ranking', 'engagement_rate_ranking', 'conversion_rate_ranking',
             'video_play_actions',
             'video_p25_watched_actions',
@@ -43,6 +43,7 @@ export default async function handler(req, res) {
             data.date_stop,
             safeValue(data.ad_id, ''),
             safeValue(data.ad_name, ''),
+            safeValue(data.effective_status, ''),
             safeValue(data.adset_id, ''),
             safeValue(data.adset_name, ''),
             safeValue(data.campaign_id, ''),
