@@ -54,8 +54,7 @@ export async function fetchEffectiveStatuses(objectLevel) {
         new URLSearchParams({
             access_token: token,
             fields: 'id,effective_status',
-            // Include all statuses so deleted/archived objects are returned too
-            effective_status: JSON.stringify(['ACTIVE','PAUSED','DELETED','ARCHIVED','WITH_ISSUES','IN_PROCESS','CAMPAIGN_PAUSED','ADSET_PAUSED']),
+            filtering: JSON.stringify([{ field: 'effective_status', operator: 'IN', value: ['ACTIVE','PAUSED','DELETED','ARCHIVED','WITH_ISSUES','IN_PROCESS','CAMPAIGN_PAUSED','ADSET_PAUSED'] }]),
             limit: 500
         });
 
